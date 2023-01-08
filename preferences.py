@@ -882,7 +882,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                     row = column.row(align=True)
                     r = row.split(factor=0.2, align=True)
                     r.prop(self, "render_enforce_hide_render", text="True" if self.render_enforce_hide_render else "False", toggle=True)
-                    r.label(text="Enforce hidde_render setting when Viewport Rendering, controlled from the Shading Pie")#
+                    r.label(text="Enforce hide_render setting when Viewport Rendering, controlled from the Shading Pie")
 
                 else:
                     row = column.row(align=True)
