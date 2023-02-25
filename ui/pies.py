@@ -1209,9 +1209,8 @@ class PieShading(Menu):
             row.operator("machin3.shade", text="Smooth", icon_value=get_icon('smooth')).mode = 'SMOOTH'
             row.operator("machin3.shade", text="Flat", icon_value=get_icon('flat')).mode = 'FLAT'
 
-
     def draw_shade_box(self, context, view, layout):
-        column = layout.column(align=True)
+        column = layout.column(align=True) 
 
         # SOLID
 
@@ -1473,7 +1472,7 @@ class PieShading(Menu):
     def draw_cycles_box(self, context, view, layout):
         cycles = context.scene.cycles
         column = layout.column(align=True)
-        
+
         row = column.split(factor=0.5, align=True)
         row.label(text='Cycles Settings')
         row.prop(context.scene.M3, 'cycles_device', expand=True)
@@ -1491,6 +1490,21 @@ class PieShading(Menu):
         row.prop(cycles, 'use_fast_gi', text='Fast GI')
         row.prop(cycles, 'ao_bounces', text="Viewport")
         row.prop(cycles, 'ao_bounces_render', text="Render")
+
+        use_bevel_shader = get_prefs().activate_render and get_prefs().render_use_bevel_shader
+
+        if use_bevel_shader:
+            m3 = context.scene.M3
+
+            column = layout.column(align=True)
+
+            row = column.row(align=True)
+            row.prop(m3, 'use_bevel_shader')
+
+            r = row.row(align=True)
+            r.active = m3.use_bevel_shader
+            r.prop(m3, 'bevel_shader_samples')
+            r.prop(m3, 'bevel_shader_radius')
 
     def draw_light_adjust_box(self, context, m3, layout):
         column = layout.column(align=True)

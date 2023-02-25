@@ -9,6 +9,7 @@ from . utils.registration import get_prefs, get_addon_prefs
 from . utils.tools import get_active_tool
 from . utils.light import adjust_lights_for_rendering, get_area_light_poll
 from . utils.view import sync_light_visibility
+from . utils.material import adjust_bevel_shader
 from . items import eevee_preset_items, align_mode_items, render_engine_items, cycles_device_items, driver_limit_items, axis_items, driver_transform_items, driver_space_items, bc_orientation_items, shading_light_items
 
 
@@ -250,7 +251,13 @@ class M3SceneProperties(bpy.types.PropertyGroup):
             self.avoid_update = False
             return
 
+
+        # SWITCH RENDER ENGINE
+
         context.scene.render.engine = self.render_engine
+
+
+        # ADJUST AREA LIGHTS
 
         if get_prefs().activate_render and get_prefs().activate_shading_pie and get_prefs().render_adjust_lights_on_render and get_area_light_poll() and self.adjust_lights_on_render:
             last = self.adjust_lights_on_render_last
@@ -274,8 +281,18 @@ class M3SceneProperties(bpy.types.PropertyGroup):
 
                 adjust_lights_for_rendering(mode='INCREASE')
 
+
+        # SYNC LIGHT VISIBILITY
+
         if get_prefs().activate_render and get_prefs().render_sync_light_visibility:
             sync_light_visibility(context.scene)
+
+
+        # ADJUST BEVEL SHADER
+
+        if get_prefs().activate_render and get_prefs().activate_shading_pie and get_prefs().render_use_bevel_shader and self.use_bevel_shader:
+            if context.scene.render.engine == 'CYCLES':
+                adjust_bevel_shader(context)
 
     def update_cycles_device(self, context):
         if self.avoid_update:
@@ -359,7 +376,14 @@ class M3SceneProperties(bpy.types.PropertyGroup):
 
             if obj:
                 obj.hide_set(obj.visible_get())
+
+    def update_use_bevel_shader(self, context):
+        adjust_bevel_shader(context)
                 
+    def update_bevel_shader(self, context):
+        if self.use_bevel_shader:
+            adjust_bevel_shader(context)
+
 
     # SHADING
 
@@ -389,6 +413,10 @@ class M3SceneProperties(bpy.types.PropertyGroup):
     is_light_decreased_by_handler: BoolProperty(name="Have Lights been decreased by the init render handler?", default=False)
 
     enforce_hide_render: BoolProperty(name="Enforce hide_render setting when Viewport Rendering", description="Enfore hide_render setting for objects when Viewport Rendering", default=True, update=update_enforce_hide_render)
+
+    use_bevel_shader: BoolProperty(name="Use Bevel Shader", description="Batch Apply Bevel Shader to visible Materials", default=False, update=update_use_bevel_shader)
+    bevel_shader_samples: IntProperty(name="Samples", default=16, min=2, max=16, update=update_bevel_shader)
+    bevel_shader_radius: FloatProperty(name="Radius", default=0.015, min=0, precision=3, step=0.01, update=update_bevel_shader)
 
 
     # VIEW

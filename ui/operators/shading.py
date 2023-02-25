@@ -5,6 +5,7 @@ from mathutils import Matrix
 from ... utils.registration import get_prefs
 from ... utils.light import adjust_lights_for_rendering, get_area_light_poll
 from ... utils.view import sync_light_visibility
+from ... utils.material import adjust_bevel_shader
 
 
 show_overlays = {'SOLID': True,
@@ -60,13 +61,20 @@ class SwitchShading(bpy.types.Operator):
             if get_prefs().activate_render and get_prefs().activate_shading_pie and get_prefs().render_adjust_lights_on_render and get_area_light_poll() and scene.M3.adjust_lights_on_render:
                 self.adjust_lights(scene, shading.type, debug=False)
 
-            # sync light visibility
-            if shading.type == 'RENDERED' and scene.render.engine == 'CYCLES' and get_prefs().activate_render and get_prefs().render_sync_light_visibility:
-                sync_light_visibility(scene)
+            if shading.type == 'RENDERED' and scene.render.engine == 'CYCLES':
+
+                # sync light visibility
+                if get_prefs().activate_render and get_prefs().render_sync_light_visibility:
+                    sync_light_visibility(scene)
+
+                # setup/adjust bevel shader
+                if get_prefs().activate_render and get_prefs().activate_shading_pie and get_prefs().render_use_bevel_shader and scene.M3.use_bevel_shader:
+                    adjust_bevel_shader(context)
 
             # enforce hide_render when viewport rendering
             if get_prefs().activate_render and get_prefs().activate_shading_pie and get_prefs().render_enforce_hide_render and scene.M3.enforce_hide_render:
                 self.enforce_render_visibility(context, shading.type, debug=True)
+
 
         overlay.show_overlays = show_overlays[self.shading_type]
         return {'FINISHED'}

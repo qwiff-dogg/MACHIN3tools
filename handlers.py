@@ -250,7 +250,6 @@ def decrease_lights_on_render_start(scene):
     if get_prefs().activate_render and get_prefs().render_sync_light_visibility:
         sync_light_visibility(scene)
 
-
 @persistent
 def increase_lights_on_render_end(scene):
     m3 = scene.M3

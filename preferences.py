@@ -260,7 +260,8 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     render_show_buttons_in_light_properties: BoolProperty(name="Show Render Buttons in Light Properties Panel", description="Show Render Buttons in Light Properties Panel", default=True)
     render_sync_light_visibility: BoolProperty(name="Sync Light visibility/renderability", description="Sync Light hide_render props based on hide_viewport props", default=True)
     render_adjust_lights_on_render: BoolProperty(name="Ajust Area Lights when Rendering in Cycles", description="Adjust Area Lights when Rendering, to better match Eevee and Cycles", default=True)
-    render_enforce_hide_render: BoolProperty(name="Enforce hide_render setting when Viewport Rendering", description="Hide Objects based on their hide_render props, when viewport rendering with Cyclces", default=True)
+    render_enforce_hide_render: BoolProperty(name="Enforce hide_render setting when Viewport Rendering", description="Hide Objects based on their hide_render props, when Viewport Rendering with Cyclces", default=True)
+    render_use_bevel_shader: BoolProperty(name="Automatically set up Bevel Shader when Cycles Rendering", description="Set up Bevel Shader on all visible Materials when Cycles Renderings", default=True)
 
 
     # Material Picker tool
@@ -883,6 +884,11 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                     r = row.split(factor=0.2, align=True)
                     r.prop(self, "render_enforce_hide_render", text="True" if self.render_enforce_hide_render else "False", toggle=True)
                     r.label(text="Enforce hide_render setting when Viewport Rendering, controlled from the Shading Pie")
+
+                    row = column.row(align=True)
+                    r = row.split(factor=0.2, align=True)
+                    r.prop(self, "render_use_bevel_shader", text="True" if self.render_use_bevel_shader else "False", toggle=True)
+                    r.label(text="Automatically Set Up Bevel Shader, controlled from the Shading Pie")
 
                 else:
                     row = column.row(align=True)
