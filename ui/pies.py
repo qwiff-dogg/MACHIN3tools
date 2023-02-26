@@ -1495,6 +1495,7 @@ class PieShading(Menu):
 
         if use_bevel_shader:
             m3 = context.scene.M3
+            active = context.active_object if context.active_object and context.active_object.select_get() else None
 
             column = layout.column(align=True)
 
@@ -1505,6 +1506,11 @@ class PieShading(Menu):
             r.active = m3.use_bevel_shader
             r.prop(m3, 'bevel_shader_samples')
             r.prop(m3, 'bevel_shader_radius')
+
+            if active:
+                row = column.row(align=True)
+                row.active = m3.use_bevel_shader
+                row.prop(active.M3, 'bevel_shader_radius_mod')
 
     def draw_light_adjust_box(self, context, m3, layout):
         column = layout.column(align=True)

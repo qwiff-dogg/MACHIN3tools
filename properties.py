@@ -578,9 +578,11 @@ class M3ObjectProperties(bpy.types.PropertyGroup):
     pre_unity_export_mesh: PointerProperty(name="Pre-Unity-Export Mesh", type=bpy.types.Mesh)
     pre_unity_export_armature: PointerProperty(name="Pre-Unity-Export Armature", type=bpy.types.Armature)
 
-    is_group_empty: BoolProperty()
-    is_group_object: BoolProperty()
-    group_size: FloatProperty(default=0.2)
+    is_group_empty: BoolProperty(name="is group empty", default=False)
+    is_group_object: BoolProperty(name="is group object", default=False)
+    group_size: FloatProperty(name="group empty size", default=0.2, min=0)
+
+    # toggle smooth tool
 
     smooth_angle: FloatProperty(name="Smooth Angle", default=30)
     has_smoothed: BoolProperty(name="Has been smoothed", default=False)
@@ -588,6 +590,11 @@ class M3ObjectProperties(bpy.types.PropertyGroup):
     # draw obj axes
 
     draw_axes: BoolProperty(name="Draw Axes", default=False)
+
+
+    # bevel shader
+
+    bevel_shader_radius_mod: FloatProperty(name="Active Object Bevel Radius Modulation", default=1, min=0, precision=2, step=0.1)
 
 
     # hidden
