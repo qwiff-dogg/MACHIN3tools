@@ -415,7 +415,7 @@ class M3SceneProperties(bpy.types.PropertyGroup):
     enforce_hide_render: BoolProperty(name="Enforce hide_render setting when Viewport Rendering", description="Enfore hide_render setting for objects when Viewport Rendering", default=True, update=update_enforce_hide_render)
 
     use_bevel_shader: BoolProperty(name="Use Bevel Shader", description="Batch Apply Bevel Shader to visible Materials", default=False, update=update_use_bevel_shader)
-    bevel_shader_samples: IntProperty(name="Samples", default=16, min=2, max=16, update=update_bevel_shader)
+    bevel_shader_samples: IntProperty(name="Samples", default=16, min=2, max=32, update=update_bevel_shader)
     bevel_shader_radius: FloatProperty(name="Radius", default=0.015, min=0, precision=3, step=0.01, update=update_bevel_shader)
 
 
