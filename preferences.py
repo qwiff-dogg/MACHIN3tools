@@ -105,7 +105,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
             angles = [int(a) for a in self.auto_smooth_angle_presets.split(',')]
         except:
             self.avoid_update = True
-            self.auto_smooth_angle_presets = "10, 20, 30, 60, 180"
+            self.auto_smooth_angle_presets = "10, 15, 20, 30, 60, 180"
 
 
     # TOOL ACTIVATION Updates
