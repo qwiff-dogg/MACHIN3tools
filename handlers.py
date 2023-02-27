@@ -89,30 +89,35 @@ def update_asset(none):
 
         operators = context.window_manager.operators
 
-        if operators and active and active.type == 'EMPTY' and active.instance_collection and active.instance_type == 'COLLECTION':
+        if operators:
             lastop = operators[-1]
 
-            if (meshmachine or decalmachine) and lastop.bl_idname == 'OBJECT_OT_transform_to_mouse':
-                # print("inserting an asset")
-                # start = time.time()
+            # unlink MESHmachine stashes and DECALmachine decal backups
+            if active and active.type == 'EMPTY' and active.instance_collection and active.instance_type == 'COLLECTION':
+                if (meshmachine or decalmachine) and lastop.bl_idname == 'OBJECT_OT_transform_to_mouse':
+                    # print("inserting an asset")
+                    # start = time.time()
 
-                # for obj in context.scene.objects:
-                for obj in context.visible_objects:
-                    if meshmachine and obj.MM.isstashobj:
-                        # print(" STASH!")
+                    # for obj in context.scene.objects:
+                    for obj in context.visible_objects:
+                        if meshmachine and obj.MM.isstashobj:
+                            # print(" STASH!")
 
-                        for col in obj.users_collection:
-                            # print(f"  unlinking {obj.name} from {col.name}")
-                            col.objects.unlink(obj)
+                            for col in obj.users_collection:
+                                # print(f"  unlinking {obj.name} from {col.name}")
+                                col.objects.unlink(obj)
 
-                    if decalmachine and obj.DM.isbackup:
-                        # print(" DECAL BACKUP!")
+                        if decalmachine and obj.DM.isbackup:
+                            # print(" DECAL BACKUP!")
 
-                        for col in obj.users_collection:
-                            # print(f"  unlinking {obj.name} from {col.name}")
-                            col.objects.unlink(obj)
+                            for col in obj.users_collection:
+                                # print(f"  unlinking {obj.name} from {col.name}")
+                                col.objects.unlink(obj)
 
-                # print(f" MACHIN3tools asset drop check done, after {time.time() - start:.20f} seconds")
+                    # print(f" MACHIN3tools asset drop check done, after {time.time() - start:.20f} seconds")
+
+            # if lastop.bl_idname == 'OBJECT_OT_drop_named_material':
+                # print("material dropped")
 
 
 @persistent
