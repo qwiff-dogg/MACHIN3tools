@@ -50,8 +50,8 @@ def adjust_bevel_shader(context, debug=False):
         print("\nadjusting bevel shader")
         print("use bevel:", m3.use_bevel_shader)
 
-    visible_objs = [obj for obj in context.visible_objects if not any([obj.type == 'EMPTY', obj.display_type in ['WIRE', 'BOUNDS'], obj.hide_render])]
-    # print("\nobjs:", [obj.name for obj in visible_objs])
+    visible_objs = [obj for obj in context.visible_objects if obj.data and getattr(obj.data, 'materials', False) is not False and not any([obj.type == 'GPENCIL', obj.display_type in ['WIRE', 'BOUNDS'], obj.hide_render])]
+    # print([obj.name for obj in visible_objs])
 
     white_bevel = bpy.data.materials.get('white bevel')
     white_bevel_objs = []
