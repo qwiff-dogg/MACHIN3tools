@@ -1,6 +1,7 @@
 import bpy
 from bpy.props import EnumProperty, BoolProperty
 from mathutils import Vector
+from .. utils.modifier import get_mod_obj
 # from .. items import axis_items
 
 
@@ -94,6 +95,7 @@ class SelectHierarchy(bpy.types.Operator):
 
     recursive: BoolProperty(name="Select Recursive Children", description="Select Children Recursively", default=True)
     unhide: BoolProperty(name="Select Hidden Children", description="Unhide and Select Hidden Children", default=False)
+    include_mod_objects: BoolProperty(name="Include Mod Objects", description="Include Mod Objects, even if they aren't parented", default=False)
 
     def draw(self, context):
         layout = self.layout
@@ -102,6 +104,7 @@ class SelectHierarchy(bpy.types.Operator):
 
         row = column.row(align=True)
         row.prop(self, 'include_parent', toggle=True)
+        row.prop(self, 'include_mod_objects', toggle=True)
 
         row = column.row(align=True)
         row.prop(self, 'recursive', text="Recursive", toggle=True)
@@ -120,13 +123,21 @@ class SelectHierarchy(bpy.types.Operator):
 
         for obj in sel:
             if self.recursive:
-                children = [(c, c.visible_get()) for c in obj.children_recursive if c.name in context.view_layer.objects]
+                children = {c for c in obj.children_recursive if c.name in context.view_layer.objects}
             else:
-                children = [(c, c.visible_get()) for c in obj.children if c.name in context.view_layer.objects]
+                children = {c for c in obj.children if c.name in context.view_layer.objects}
 
-            for c, vis in children:
+            if self.include_mod_objects:
+                for mod in obj.modifiers:
+                    if mod.show_viewport:
+                        modobj = get_mod_obj(mod)
+
+                        if modobj and modobj.name in context.view_layer.objects and modobj:
+                            children.add(modobj)
+
+            for c in children:
                 # unhide
-                if self.unhide and not vis:
+                if self.unhide and not c.visible_get():
                     if view.local_view and not c.local_view_get(view):
                         c.local_view_set(view, True)
 
@@ -135,8 +146,8 @@ class SelectHierarchy(bpy.types.Operator):
                 # select
                 c.select_set(True)
 
+
             # set parent selection state
             obj.select_set(self.include_parent)
-
 
         return {'FINISHED'}
