@@ -275,6 +275,10 @@ def draw_screen_cast_HUD(context):
 
 # HUD
 
+def draw_init(self, event):
+    self.font_id = 1
+    self.offset = 0
+
 def update_HUD_location(self, event, offsetx=20, offsety=20):
     '''
     previously, this was done in draw_init
@@ -287,6 +291,7 @@ def update_HUD_location(self, event, offsetx=20, offsety=20):
     self.HUD_y = event.mouse_y - self.region_offset_y + offsety
 
 
+"""
 def draw_label(context, title='', coords=None, center=True, color=(1, 1, 1), alpha=1):
 
     # centered, but slighly below
@@ -313,6 +318,40 @@ def draw_label(context, title='', coords=None, center=True, color=(1, 1, 1), alp
     # blf.position(font, 10, 10, 0)
 
     blf.draw(font, title)
+"""
+
+def draw_label(context, title='', coords=None, offset=0, center=True, size=12, color=(1, 1, 1), alpha=1, return_dimensions=False):
+
+    # centered, but slighly below
+    if not coords:
+        region = context.region
+        width = region.width / 2
+        height = region.height / 2
+    else:
+        width, height = coords
+
+    scale = context.preferences.view.ui_scale * get_prefs().HUD_scale
+
+    font = 1
+    fontsize = int(size * scale)
+
+    blf.size(font, fontsize, 72)
+    blf.color(font, *color, alpha)
+
+    if center:
+        blf.position(font, width - (int(len(title) * scale * 7) / 2), height + int(fontsize) + offset, 0)
+    else:
+        # blf.position(font, *(coords), 1)
+        blf.position(font, coords[0], coords[1] - (offset * scale), 1)
+
+    # blf.position(font, 10, 10, 0)
+
+    blf.draw(font, title)
+
+    if return_dimensions:
+        return blf.dimensions(font, title)
+
+
 
 
 # BASIC

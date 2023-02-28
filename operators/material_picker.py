@@ -2,34 +2,42 @@ import bpy
 from bpy.props import BoolProperty
 from bl_ui.space_statusbar import STATUSBAR_HT_header as statusbar
 from mathutils import Vector
+import os
 from .. utils.raycast import cast_obj_ray_from_mouse, cast_bvh_ray_from_mouse
-from .. utils.draw import draw_label, update_HUD_location
+from .. utils.draw import draw_label, update_HUD_location, draw_init
 from .. utils.registration import get_prefs
 from .. utils.system import printd
-from .. utils.ui import init_cursor
+from .. utils.ui import init_cursor, init_status, finish_status
 from .. items import alt, ctrl
-from .. colors import white, yellow, green
+from .. colors import white, yellow, green, red
 
 
-def draw_material_pick_status(self, context):
-    layout = self.layout
+def draw_material_pick_status(op):
+    def draw(self, context):
+        layout = self.layout
 
-    row = layout.row(align=True)
-    row.label(text=f"Material Picker")
+        row = layout.row(align=True)
+        row.label(text=f"Material Picker")
 
-    row.label(text="", icon='MOUSE_LMB')
-    row.label(text="Pick Material")
+        row.label(text="", icon='MOUSE_LMB')
+        row.label(text="Pick Material")
 
-    row.label(text="", icon='MOUSE_MMB')
-    row.label(text="Viewport")
+        row.label(text="", icon='MOUSE_MMB')
+        row.label(text="Viewport")
 
-    row.label(text="", icon='MOUSE_RMB')
-    row.label(text="Cancel")
+        row.label(text="", icon='MOUSE_RMB')
+        row.label(text="Cancel")
 
-    row.separator(factor=10)
+        row.separator(factor=10)
 
-    row.label(text="", icon='EVENT_ALT')
-    row.label(text="Assign Material")
+        row.label(text="", icon='EVENT_ALT')
+        row.label(text="Assign Material")
+
+        if op.asset_browser:
+            row.label(text="", icon='EVENT_CTRL')
+            row.label(text="Assign Material from Asset Browser")
+
+    return draw
 
 
 class MaterialPicker(bpy.types.Operator):
@@ -45,11 +53,29 @@ class MaterialPicker(bpy.types.Operator):
     def poll(cls, context):
         return context.area.type == 'VIEW_3D'
 
-    def draw_HUD(self, args):
-        context, event = args
+    def draw_HUD(self, context):
+        draw_init(self, None)
 
         title, color = ("Assign from Asset Browser", green) if self.assign_from_assetbrowser else ("Assign", yellow) if self.assign else ("Pick", white)
         draw_label(context, title=title, coords=Vector((self.HUD_x, self.HUD_y)), color=color, center=False)
+
+        if self.assign_from_assetbrowser:
+            self.offset += 18
+
+            if self.asset:
+                asset_type = self.asset['asset_type']
+
+                if asset_type == 'Material':
+                    title = f"{self.asset['library']} • {self.asset['blend_name']} • "
+                    dims = draw_label(context, title=title, coords=Vector((self.HUD_x, self.HUD_y)), offset=self.offset, center=False, color=white, alpha=0.5, return_dimensions=True)
+
+                    title = f"{self.asset['asset_name']}"
+                    draw_label(context, title=title, coords=Vector((self.HUD_x + dims[0], self.HUD_y)), offset=self.offset, center=False, color=white)
+
+                else:
+                    draw_label(context, title=f"Can't assign {asset_type} assets as a Material", coords=Vector((self.HUD_x, self.HUD_y)), offset=self.offset, color=red, center=False)
+            else:
+                draw_label(context, title="No Asset Selected in Asset Browser", coords=Vector((self.HUD_x, self.HUD_y)), offset=self.offset, color=red, center=False)
 
 
     def modal(self, context, event):
@@ -68,10 +94,10 @@ class MaterialPicker(bpy.types.Operator):
             context.window.cursor_set("EYEDROPPER")
 
             # fetch selected asset from asset browser
-            self.asset_browser_material = self.get_selected_material()
+            self.asset = self.get_selected_asset()
 
-            if self.asset_browser_material:
-                printd(self.asset_browser_material)
+            if self.asset:
+                printd(self.asset)
 
 
         # PASSTROUGH to ASSET BROWSER
@@ -169,7 +195,8 @@ class MaterialPicker(bpy.types.Operator):
 
         context.window.cursor_set("DEFAULT")
 
-        statusbar.draw = self.bar_orig
+        # reset statusbar
+        finish_status(self)
 
         if context.visible_objects:
             context.visible_objects[0].select_set(context.visible_objects[0].select_get())
@@ -187,10 +214,10 @@ class MaterialPicker(bpy.types.Operator):
         # check the active screen and fetch all areas and their position/dimenension
         self.areas, self.asset_browser = self.get_areas(context)
 
-        self.asset_browser_material = self.get_selected_material()
+        self.asset = self.get_selected_asset()
 
-        if self.asset_browser_material:
-            printd(self.asset_browser_material)
+        if self.asset:
+            printd(self.asset)
 
         # printd(self.areas)
         # print(self.asset_browser)
@@ -199,15 +226,15 @@ class MaterialPicker(bpy.types.Operator):
 
         self.dg = context.evaluated_depsgraph_get()
 
-        self.bar_orig = statusbar.draw
-        statusbar.draw = draw_material_pick_status
+        # statusbar
+        init_status(self, context, func=draw_material_pick_status(self))
+
 
         if context.visible_objects:
             context.visible_objects[0].select_set(context.visible_objects[0].select_get())
 
         # handlers
-        args = (context, event)
-        self.HUD = bpy.types.SpaceView3D.draw_handler_add(self.draw_HUD, (args, ), 'WINDOW', 'POST_PIXEL')
+        self.HUD = bpy.types.SpaceView3D.draw_handler_add(self.draw_HUD, (context, ), 'WINDOW', 'POST_PIXEL')
 
         context.window_manager.modal_handler_add(self)
         return {'RUNNING_MODAL'}
@@ -251,22 +278,32 @@ class MaterialPicker(bpy.types.Operator):
                     # print(" in y of", areaname, "too")
                     return areaname
 
-    def get_selected_material(self):
+    def get_selected_asset(self):
         '''
-        from the asset browser, fetch the selected material
+        from the asset browser, fetch the selected asset
         '''
 
         asset = None
 
         if self.asset_browser:
             ab = self.asset_browser
-            directory = ab.directory.decode()
+
+            directory = ab.directory.decode().replace('\\', '/')
+            filename = ab.filename.replace('\\', '/')
+
+            split = filename.split('/')
+
+            blendpath = os.path.join(directory, split[0])
+            blend_name = split[0].replace('.blend', '')
+            asset_type, asset_name = split[1:3]
 
             asset = {'import_type': ab.import_type,
                      'library': ab.asset_library_ref,
                      'catalog_id': ab.catalog_id,
-                     'directory': directory,
-                     'filename': ab.filename}
+                     'blendpath': blendpath,
+                     'blend_name': blend_name,
+                     'asset_type': asset_type,
+                     'asset_name': asset_name}
 
             # printd(asset)
 
