@@ -19,8 +19,17 @@ def draw_material_pick_status(op):
         row = layout.row(align=True)
         row.label(text=f"Material Picker")
 
-        row.label(text="", icon='MOUSE_LMB')
-        row.label(text="Pick Material")
+        if op.assign_from_assetbrowser:
+            row.label(text="Assign Material from Asset Browsr to Object under Mouse")
+
+        else:
+            row.label(text="", icon='MOUSE_LMB')
+            
+            if op.assign:
+                row.label(text="Pick Material and Assign it to Selected Objects")
+
+            else:
+                row.label(text="Pick Material and Finish")
 
         row.label(text="", icon='MOUSE_MMB')
         row.label(text="Viewport")
@@ -28,14 +37,17 @@ def draw_material_pick_status(op):
         row.label(text="", icon='MOUSE_RMB')
         row.label(text="Cancel")
 
+        row.label(text="", icon='EVENT_SPACEKEY')
+        row.label(text="Finish")
+
         row.separator(factor=10)
 
         row.label(text="", icon='EVENT_ALT')
-        row.label(text="Assign Material")
+        row.label(text=f"Assign Material: {op.assign}")
 
         if op.asset_browser:
             row.label(text="", icon='EVENT_CTRL')
-            row.label(text="Assign Material from Asset Browser")
+            row.label(text=f"Assign Material from Asset Browser: {op.assign_from_assetbrowser}")
 
     return draw
 
@@ -128,12 +140,20 @@ class MaterialPicker(bpy.types.Operator):
             if 'ASSET_BROWSER' in self.areas:
                 self.assign_from_assetbrowser = event.ctrl
 
+                if self.assign_from_assetbrowser:
+                    self.assign = False
+
             if event.type in [*alt, *ctrl]:
                 if event.value == 'PRESS':
                     context.window.cursor_set("PAINT_CROSS")
 
+
                 elif event.value == 'RELEASE':
                     context.window.cursor_set("EYEDROPPER")
+                
+                # force statusbar update
+                if context.visible_objects:
+                    context.visible_objects[0].select_set(context.visible_objects[0].select_get())
 
 
             # MOUSEMOVE
@@ -154,7 +174,6 @@ class MaterialPicker(bpy.types.Operator):
             elif event.type == 'LEFTMOUSE':
 
                 hitobj, matindex = self.get_material_hit(context, self.mousepos, debug=False)
-                mat, matname = self.get_material_from_hit(hitobj, matindex)
 
                 if hitobj:
 
@@ -163,16 +182,54 @@ class MaterialPicker(bpy.types.Operator):
                     context.view_layer.objects.active = hitobj
                     hitobj.active_material_index = matindex
 
+                    if self.assign_from_assetbrowser:
 
-                    # ASSIGN from ASSETBROWSER
+                        # Import Material from ASSETBROWSER and assign it to the picked object at matindex
 
-                    if self.assign_from_assetbrowser and self.asset['asset_type'] == 'Material':
-                        print("TODO: assigning from asset browser")
+                        if self.assign_from_assetbrowser:
+                            if self.asset['asset_type'] == 'Material':
+                                import_type = self.asset['import_type']
+                                directory = os.path.join(self.asset['blendpath'], 'Material')
+                                filename = self.asset['asset_name']
+
+                                # print("\nassset browser material import")
+                                mat = bpy.data.materials.get(filename)
+
+                                if mat:
+                                    # print(" a material of this name exists already:", mat)
+                                    pass
+
+                                else:
+                                    # print(" import type:", import_type)
+                                    # print(" directory:", directory)
+                                    # print(" filename:", filename)
+
+                                    if 'Append' in import_type:
+                                        reuse_local_id= 'Reuse' in import_type
+                                        bpy.ops.wm.append(directory=directory, filename=filename, do_reuse_local_id=reuse_local_id)
+
+                                    else:
+                                        bpy.ops.wm.link(directory=directory, filename=filename)
+
+                                    mat = bpy.data.materials.get(filename)
+                                    # print(" imported material:", mat)
+
+                                    # disable fake user
+                                    if mat.use_fake_user:
+                                        mat.use_fake_user = False
+
+                                # apply the material at the matindex
+                                print(" applying to obj", hitobj.name, "at index", matindex)
+                                hitobj.material_slots[matindex].material = mat
+
+                        # don't finish the modal in this case, finish using space instead
+                        return {'RUNNING_MODAL'}
 
 
-                    # ASSIGN - assign the picked material to the selected objects
+                    # ASSIGN - assign the picked material to the selection of objects
 
                     elif self.assign:
+                        mat, matname = self.get_material_from_hit(hitobj, matindex)
 
                         if mat:
                             sel = [obj for obj in context.selected_objects if obj != hitobj and obj.data]
@@ -186,6 +243,13 @@ class MaterialPicker(bpy.types.Operator):
 
                 self.finish(context)
 
+                return {'FINISHED'}
+
+
+            # FINISH with SPACE
+
+            elif event.type == 'SPACE':
+                self.finish(context)
                 return {'FINISHED'}
 
 
@@ -312,7 +376,7 @@ class MaterialPicker(bpy.types.Operator):
                      'asset_type': asset_type,
                      'asset_name': asset_name}
 
-            # printd(asset)
+            printd(asset)
 
         else:
             print("there is no asset browser")
@@ -340,8 +404,12 @@ class MaterialPicker(bpy.types.Operator):
             elif context.mode == 'EDIT_MESH':
                 matindex = hitobj.data.polygons[hitindex].material_index
 
-            if debug:
+            # if debug:
+            if True:
                 print(" hit object:", hitobj.name, "material index:", matindex)
+
+            # NOTE: safe-guard against crazy big material indices, which can happen as a result of (live?) booleans
+            matindex = min(matindex, len(hitobj.material_slots) - 1)
 
             return hitobj, matindex
 
