@@ -56,10 +56,12 @@ class MaterialPicker(bpy.types.Operator):
     def draw_HUD(self, context):
         draw_init(self, None)
 
-        title, color = ("Assign from Asset Browser", green) if self.assign_from_assetbrowser else ("Assign", yellow) if self.assign else ("Pick", white)
-        draw_label(context, title=title, coords=Vector((self.HUD_x, self.HUD_y)), color=color, center=False)
+        title, color = ("Assign from Asset Browser ", green) if self.assign_from_assetbrowser else ("Assign", yellow) if self.assign else ("Pick", white)
+        dims = draw_label(context, title=title, coords=Vector((self.HUD_x, self.HUD_y)), color=color, center=False, return_dimensions=True)
 
         if self.assign_from_assetbrowser:
+            draw_label(context, title=self.asset['import_type'], coords=Vector((self.HUD_x + dims[0], self.HUD_y)), center=False, color=white, alpha=0.5, return_dimensions=True)
+
             self.offset += 18
 
             if self.asset:
@@ -73,9 +75,17 @@ class MaterialPicker(bpy.types.Operator):
                     draw_label(context, title=title, coords=Vector((self.HUD_x + dims[0], self.HUD_y)), offset=self.offset, center=False, color=white)
 
                 else:
-                    draw_label(context, title=f"Can't assign {asset_type} assets as a Material", coords=Vector((self.HUD_x, self.HUD_y)), offset=self.offset, color=red, center=False)
+                    draw_label(context, title=f"Can't assign {asset_type} asset as a Material", coords=Vector((self.HUD_x, self.HUD_y)), offset=self.offset, color=red, center=False)
             else:
                 draw_label(context, title="No Asset Selected in Asset Browser", coords=Vector((self.HUD_x, self.HUD_y)), offset=self.offset, color=red, center=False)
+
+        else:
+            self.offset += 18
+
+            color = red if self.pick_material_name == 'None' else white
+
+            dims = draw_label(context, title='Material ', coords=Vector((self.HUD_x, self.HUD_y)), offset=self.offset, center=False, color=white, alpha=0.5, return_dimensions=True)
+            draw_label(context, title=self.pick_material_name, coords=Vector((self.HUD_x + dims[0], self.HUD_y)), offset=self.offset, center=False, color=color, alpha=1)
 
 
     def modal(self, context, event):
@@ -131,29 +141,40 @@ class MaterialPicker(bpy.types.Operator):
             if event.type == 'MOUSEMOVE':
                 update_HUD_location(self, event)
 
+                # fetch material via raycast in pick and assign modes, but not when assigning from the asset browser
+                if not self.assign_from_assetbrowser:
+                    hitobj, matindex = self.get_material_hit(context, self.mousepos, debug=False)
+
+                    # try to fetch the material from the hit and stroe its name on the op
+                    mat, self.pick_material_name = self.get_material_from_hit(hitobj, matindex)
+
 
             # FINISH
 
             elif event.type == 'LEFTMOUSE':
-                if context.mode == 'OBJECT':
-                    hitobj, hitobj_eval, _, _, hitindex, _ = cast_obj_ray_from_mouse(self.mousepos, depsgraph=self.dg, debug=False)
 
-                elif context.mode == 'EDIT_MESH':
-                    hitobj, _, _, hitindex, _, _ = cast_bvh_ray_from_mouse(self.mousepos, candidates=[obj for obj in context.visible_objects if obj.mode == 'EDIT'])
+                hitobj, matindex = self.get_material_hit(context, self.mousepos, debug=False)
+                mat, matname = self.get_material_from_hit(hitobj, matindex)
 
                 if hitobj:
-                    if context.mode == 'OBJECT':
-                        matindex = hitobj_eval.data.polygons[hitindex].material_index
-                    elif context.mode == 'EDIT_MESH':
-                        matindex = hitobj.data.polygons[hitindex].material_index
+
+                    # PICK - make the hitobject and its material (slot) active
 
                     context.view_layer.objects.active = hitobj
                     hitobj.active_material_index = matindex
 
-                    if hitobj.material_slots and hitobj.material_slots[matindex].material:
-                        mat = hitobj.material_slots[matindex].material
 
-                        if self.assign:
+                    # ASSIGN from ASSETBROWSER
+
+                    if self.assign_from_assetbrowser and self.asset['asset_type'] == 'Material':
+                        print("TODO: assigning from asset browser")
+
+
+                    # ASSIGN - assign the picked material to the selected objects
+
+                    elif self.assign:
+
+                        if mat:
                             sel = [obj for obj in context.selected_objects if obj != hitobj and obj.data]
 
                             for obj in sel:
@@ -163,16 +184,8 @@ class MaterialPicker(bpy.types.Operator):
                                 else:
                                     obj.material_slots[obj.active_material_index].material = mat
 
-
-                        bpy.ops.machin3.draw_label(text=mat.name, coords=self.mousepos, alpha=1, time=get_prefs().HUD_fade_material_picker)
-
-                    else:
-                        bpy.ops.machin3.draw_label(text="Empty", coords=self.mousepos, color=(0.5, 0.5, 0.5), alpha=1, time=get_prefs().HUD_fade_material_picker + 0.2)
-
-                else:
-                    bpy.ops.machin3.draw_label(text="None", coords=self.mousepos, color=(1, 0, 0), alpha=1, time=get_prefs().HUD_fade_material_picker + 0.2)
-
                 self.finish(context)
+
                 return {'FINISHED'}
 
 
@@ -206,6 +219,10 @@ class MaterialPicker(bpy.types.Operator):
         # init
         self.assign = False 
         self.assign_from_assetbrowser = False 
+        self.pick_material_name = "None"
+
+        # get the depsgraph
+        self.dg = context.evaluated_depsgraph_get()
 
         # init mouse cursor
         init_cursor(self, event)
@@ -214,21 +231,11 @@ class MaterialPicker(bpy.types.Operator):
         # check the active screen and fetch all areas and their position/dimenension
         self.areas, self.asset_browser = self.get_areas(context)
 
+        # then fetch the selected asset
         self.asset = self.get_selected_asset()
 
-        if self.asset:
-            printd(self.asset)
-
-        # printd(self.areas)
-        # print(self.asset_browser)
-
-        # return {'FINISHED'}
-
-        self.dg = context.evaluated_depsgraph_get()
-
-        # statusbar
+        # int statusbar
         init_status(self, context, func=draw_material_pick_status(self))
-
 
         if context.visible_objects:
             context.visible_objects[0].select_set(context.visible_objects[0].select_get())
@@ -297,7 +304,7 @@ class MaterialPicker(bpy.types.Operator):
             blend_name = split[0].replace('.blend', '')
             asset_type, asset_name = split[1:3]
 
-            asset = {'import_type': ab.import_type,
+            asset = {'import_type': ab.import_type.title().replace('_', ' '),
                      'library': ab.asset_library_ref,
                      'catalog_id': ab.catalog_id,
                      'blendpath': blendpath,
@@ -311,3 +318,45 @@ class MaterialPicker(bpy.types.Operator):
             print("there is no asset browser")
 
         return asset
+
+    def get_material_hit(self, context, mousepos, debug=False):
+        '''
+        cat ray in object or edit mode and return the hit object and material index
+        '''
+
+        if debug:
+            print("\nmaterial hitting at", mousepos)
+        
+        if context.mode == 'OBJECT':
+            hitobj, hitobj_eval, _, _, hitindex, _ = cast_obj_ray_from_mouse(self.mousepos, depsgraph=self.dg, debug=False)
+
+        elif context.mode == 'EDIT_MESH':
+            hitobj, _, _, hitindex, _, _ = cast_bvh_ray_from_mouse(self.mousepos, candidates=[obj for obj in context.visible_objects if obj.mode == 'EDIT'], debug=False)
+
+        if hitobj:
+
+            if context.mode == 'OBJECT':
+                matindex = hitobj_eval.data.polygons[hitindex].material_index
+            elif context.mode == 'EDIT_MESH':
+                matindex = hitobj.data.polygons[hitindex].material_index
+
+            if debug:
+                print(" hit object:", hitobj.name, "material index:", matindex)
+
+            return hitobj, matindex
+
+        if debug:
+            print(" nothing hit")
+        return None, None
+
+    def get_material_from_hit(self, obj, index):
+        '''
+        from the passed in object and material index, return the material, if there is ona at the stack index
+        return None, if either argument is None or there is no material are the passed in index
+        '''
+
+        if obj and index is not None:
+            if obj.material_slots and obj.material_slots[index].material:
+                mat = obj.material_slots[index].material
+                return mat, mat.name
+        return None, 'None'

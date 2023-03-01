@@ -28,8 +28,7 @@ has_hud = ['OT_material_picker',
            'MT_tools_pie',
            'OT_mirror']
 
-is_fading = ['OT_material_picker',
-             'OT_clean_up',
+is_fading = ['OT_clean_up',
              'OT_clipping_toggle',
              'OT_group',
              'MT_tools_pie']
@@ -474,7 +473,6 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     HUD_scale: FloatProperty(name="HUD Scale", description="Scale of HUD elements", default=1, min=0.1)
     HUD_fade_clean_up: FloatProperty(name="Clean Up HUD Fade Time (seconds)", default=1, min=0.1, max=3)
     HUD_fade_clipping_toggle: FloatProperty(name="Clipping Toggle HUD Fade Time (seconds)", default=1, min=0.1)
-    HUD_fade_material_picker: FloatProperty(name="Material Picker HUD Fade Time (seconds)", default=0.5, min=0.1)
     HUD_fade_group: FloatProperty(name="Group HUD Fade Time (seconds)", default=1, min=0.1)
     HUD_fade_tools_pie: FloatProperty(name="Tools Pie HUD Fade Time (seconds)", default=0.75, min=0.1)
 
@@ -722,9 +720,6 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
 
                 if getattr(bpy.types, "MACHIN3_OT_clipping_toggle", False):
                     row.prop(self, "HUD_fade_clipping_toggle", text="Clipping Toggle")
-
-                if getattr(bpy.types, "MACHIN3_OT_material_picker", False):
-                    row.prop(self, "HUD_fade_material_picker", text="Material Picker")
 
                 if getattr(bpy.types, "MACHIN3_OT_group", False):
                     row.prop(self, "HUD_fade_group", text="Group")
