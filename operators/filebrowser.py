@@ -49,21 +49,11 @@ class Toggle(bpy.types.Operator):
         return context.area.type == 'FILE_BROWSER'
 
     def execute(self, context):
-        if self.type == 'DISPLAY_TYPE':
-            if context.area.ui_type == 'FILES':
-                if context.space_data.params.display_type == 'LIST_VERTICAL':
-                    context.space_data.params.display_type = 'THUMBNAIL'
 
-                else:
-                    context.space_data.params.display_type = 'LIST_VERTICAL'
+        # 1
+        if self.type == 'SORT':
 
-            elif context.area.ui_type == 'ASSETS':
-                if context.space_data.params.asset_library_ref == 'Library':
-                    context.space_data.params.asset_library_ref = 'LOCAL'
-                elif context.space_data.params.asset_library_ref == 'LOCAL':
-                    context.space_data.params.asset_library_ref = 'Library'
-
-        elif self.type == 'SORT':
+            # FILEBROWSER - toggle sorting by name or time
             if context.area.ui_type == 'FILES':
                 if context.space_data.params.sort_method == 'FILE_SORT_ALPHA':
                     context.space_data.params.sort_method = 'FILE_SORT_TIME'
@@ -71,11 +61,35 @@ class Toggle(bpy.types.Operator):
                 else:
                     context.space_data.params.sort_method = 'FILE_SORT_ALPHA'
 
+            # ASSETBROWSER - cycle asset liraries
             elif context.area.ui_type == 'ASSETS':
-                import_types = ['LINK', 'APPEND', 'APPEND_REUSE']
+                asset_libraries = ['LOCAL'] + [lib.name for lib in context.preferences.filepaths.asset_libraries]
+                current = context.space_data.params.asset_library_ref
 
-                bpy.context.space_data.params.import_type = step_list(context.space_data.params.import_type, import_types, 1)
+                context.space_data.params.asset_library_ref = step_list(current, asset_libraries, 1)
 
+        # 2
+        elif self.type == 'DISPLAY_TYPE':
+
+            # FILEBROWSER - toggle display type
+            if context.area.ui_type == 'FILES':
+                if context.space_data.params.display_type == 'LIST_VERTICAL':
+                    context.space_data.params.display_type = 'THUMBNAIL'
+
+                else:
+                    context.space_data.params.display_type = 'LIST_VERTICAL'
+
+            # ASSETBROWSER - cycle import types
+            elif context.area.ui_type == 'ASSETS':
+
+                # only cycle importy types when you aren't in the LOCAL lib, in that case the prop is not used and is hidden in the UI, so you may end up changing it accidentally
+                if context.space_data.params.asset_library_ref != 'LOCAL':
+                    import_types = ['LINK', 'APPEND', 'APPEND_REUSE']
+                    current = context.space_data.params.import_type
+
+                    bpy.context.space_data.params.import_type = step_list(current, import_types, 1)
+
+        # 4 toggle hidden files in asset browser
         elif self.type == 'HIDDEN':
             if context.area.ui_type == 'FILES':
                 context.space_data.params.show_hidden = not context.space_data.params.show_hidden
@@ -95,6 +109,7 @@ class CycleThumbs(bpy.types.Operator):
     def poll(cls, context):
         return context.area.type == 'FILE_BROWSER' and context.space_data.params.display_type == 'THUMBNAIL'
 
+    # 3  
     def execute(self, context):
         sizes = ['TINY', 'SMALL', 'NORMAL', 'LARGE']
         size = bpy.context.space_data.params.display_size
