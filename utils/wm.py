@@ -300,16 +300,15 @@ def get_last_operators(context, debug=False):
 
         elif idname == 'machin3.hyper_cursor_object':
             hide_all = getattr(op, 'hide_all_visible_wire_objs')
-            toggle_wire_children = getattr(op, 'toggle_wire_children')
             sort_modifiers = getattr(op, 'sort_modifiers')
+            cycle_object_tree = getattr(op, 'cycle_object_tree')
 
             if hide_all:
                 label = "Hide All Visible Wire Objects"
-            elif toggle_wire_children:
-                label = "Toggle Wire Objects in Object Tree"
             elif sort_modifiers:
                 label = "Sort Modifiers + Force Gizmo Update"
-
+            elif cycle_object_tree:
+                label = "Cycle Object Tree"
 
         operators.append((addon, label, idname, prop))
 
