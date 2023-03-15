@@ -1034,7 +1034,6 @@ class PieShading(Menu):
         # row = column.row()
         # row.prop(m3, "draw_cursor_axes", text="Cursor's Axes", icon='EMPTY_AXIS')
 
-
     def draw_solid_box(self, context, view, layout):
         shading = context.space_data.shading
 
@@ -1401,6 +1400,12 @@ class PieShading(Menu):
         row.prop(context.scene.M3, "eevee_preset_set_use_scene_lights", text='', icon='LIGHT_SUN')
         row.prop(context.scene.M3, "eevee_preset_set_use_scene_world", text='', icon='WORLD')
         row.prop(context.scene.M3, "eevee_preset", expand=True)
+
+        row = column.row(align=True)
+        row.label(text='Passes')
+        row.separator()
+        row.separator()
+        row.prop(view.shading, "render_pass", text='')
 
 
         # SSR
