@@ -458,40 +458,113 @@ class Purge(bpy.types.Operator):
 
 class Clean(bpy.types.Operator):
     bl_idname = "machin3.clean_out_blend_file"
-    bl_label = "Clean out entire .blend file!"
-    bl_description = "Clean out entire .blend file"
+    bl_label = "Clean out .blend file!"
     bl_options = {'REGISTER', 'UNDO'}
+
+    remove_custom_brushes: BoolProperty(name="Remove Custom Brushes", default=False)
+    has_selection: BoolProperty(name="Has Selected Objects", default=False)
 
     @classmethod
     def poll(cls, context):
         return bpy.data.objects or bpy.data.materials or bpy.data.images
 
+    @classmethod
+    def description(cls, context, properties):
+        desc = "Clean out entire .blend file"
+
+        if context.selected_objects:
+            desc += " (except selected objects)"
+
+        desc += '\nALT: Remove non-default Brushes too'
+
+        return desc
+
     def draw(self, context):
         layout = self.layout
-
         column = layout.column()
-        column.label(text='This will remove everything in the current .blend file!', icon_value=get_icon('error'))
+
+        text = "This will remove everything in the current .blend file"
+
+        if self.remove_custom_brushes:
+            text += ", including custom Brushes"
+
+        if self.has_selection:
+            if self.remove_custom_brushes:
+                text += ", but except the selected objects"
+            else:
+                text += ", except the selected objects"
+
+        text += "!"
+
+        column.label(text=text, icon_value=get_icon('error'))
 
     def invoke(self, context, event):
+        self.has_selection = True if context.selected_objects else False
+        self.remove_custom_brushes = event.alt
+
+        width = 600 if self.has_selection and self.remove_custom_brushes else 450 if self.has_selection or self.remove_custom_brushes else 300
+
         wm = context.window_manager
-        return wm.invoke_props_dialog(self)
+        return wm.invoke_props_dialog(self, width=width)
 
     def execute(self, context):
-        for obj in bpy.data.objects:
-            bpy.data.objects.remove(obj, do_unlink=True)
 
-        for mat in bpy.data.materials:
-            bpy.data.materials.remove(mat, do_unlink=True)
+        # remove Objects
+        sel = [obj for obj in context.selected_objects]
+        remove_objs = [obj for obj in bpy.data.objects if obj not in sel]
+        bpy.data.batch_remove(remove_objs)
 
-        for img in bpy.data.images:
-            bpy.data.images.remove(img, do_unlink=True)
+        # prevent selected objects only being in collections, that will be removed
+        if sel:
+            mcol = context.scene.collection
 
-        for col in bpy.data.collections:
-            bpy.data.collections.remove(col, do_unlink=True)
+            for obj in sel:
+                if obj.name not in mcol.objects:
+                    mcol.objects.link(obj)
+                    print(f"WARNING: Adding {obj.name} to master collection to ensure visibility/accessibility")
 
-        for i in range(5):
-            bpy.ops.outliner.orphans_purge()
+        # remove Scenes (all but current)
+        remove_scenes = [scene for scene in bpy.data.scenes if scene != context.scene]
+        bpy.data.batch_remove(remove_scenes)
 
+        # remove Materials
+        bpy.data.batch_remove(bpy.data.materials)
+
+        # remove Images
+        bpy.data.batch_remove(bpy.data.images)
+        
+        # remove collections
+        bpy.data.batch_remove(bpy.data.collections)
+
+        # remove text
+        bpy.data.batch_remove(bpy.data.texts)
+
+        # remove actions
+        bpy.data.batch_remove(bpy.data.actions)
+
+        # all but default brushes
+        if self.remove_custom_brushes:
+            print("WARNING: Removing Custom Brushes")
+            default_brushes_names = ['Add', 'Airbrush', 'Average', 'Blob', 'Blur', 'Boundary', 'Clay', 'Clay Strips', 'Clay Thumb', 'Clone', 'Clone Stroke', 'Cloth', 'Crease', 'Darken', 'Draw', 'Draw Face Sets', 'Draw Sharp', 'Draw Weight', 'Elastic Deform', 'Eraser Hard', 'Eraser Point', 'Eraser Soft', 'Eraser Stroke', 'Fill', 'Fill Area', 'Fill/Deepen', 'Flatten/Contrast', 'Grab', 'Grab Stroke', 'Inflate/Deflate', 'Ink Pen', 'Ink Pen Rough', 'Layer', 'Lighten', 'Marker Bold', 'Marker Chisel', 'Mask', 'Mix', 'Multi-plane Scrape', 'Multiply', 'Multires Displacement Eraser', 'Nudge', 'Paint', 'Pen', 'Pencil', 'Pencil Soft', 'Pinch Stroke', 'Pinch/Magnify', 'Pose', 'Push Stroke', 'Randomize Stroke', 'Rotate', 'Scrape/Peaks', 'SculptDraw', 'Simplify', 'Slide Relax', 'Smear', 'Smooth', 'Smooth Stroke', 'Snake Hook', 'Soften', 'Strength Stroke', 'Subtract', 'TexDraw', 'Thickness Stroke', 'Thumb', 'Tint', 'Twist Stroke', 'Vertex Average', 'Vertex Blur', 'Vertex Draw', 'Vertex Replace', 'Vertex Smear']
+            remove_brushes = [brush for brush in bpy.data.brushes if brush.name not in default_brushes_names]
+            bpy.data.batch_remove(remove_brushes)
+
+        # remove worlds
+        bpy.data.batch_remove(bpy.data.worlds)
+
+        # purge recursively
+        bpy.ops.outliner.orphans_purge(do_recursive=True)
+
+        # remove left over Meshes (fake users)
+        if bpy.data.meshes:
+            selmeshes = [obj.data for obj in sel if obj.type == 'MESH']
+            remove_meshes = [mesh for mesh in bpy.data.meshes if mesh not in selmeshes]
+
+            if remove_meshes:
+                print("WARNING: Removing leftover meshes")
+                bpy.data.batch_remove(remove_meshes)
+
+        # go out of local view, if in it
         if context.space_data.local_view:
             bpy.ops.view3d.localview(frame_selected=False)
 
