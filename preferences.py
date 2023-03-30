@@ -1,6 +1,7 @@
 import bpy
 from bpy.props import IntProperty, StringProperty, BoolProperty, EnumProperty, FloatProperty, FloatVectorProperty
 import os
+import shutil
 from . utils.ui import get_icon, draw_keymap_items, get_keymap_item
 from . utils.registration import activate, get_path, get_name, get_addon
 from . items import preferences_tabs, matcap_background_type_items
@@ -54,6 +55,10 @@ has_settings = has_sidebar + draws_lines + has_hud + ['OT_smart_vert',
                                                       'MT_snapping_pie',
                                                       'MT_viewport_pie',
                                                       'MT_tools_pie']
+
+
+has_skribe = None
+has_screencast_keys = None
 
 
 class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
@@ -318,6 +323,9 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     screencast_show_addon: BoolProperty(name="Display Operator's Addons", description="Display Operator's Addon", default=True)
     screencast_show_idname: BoolProperty(name="Display Operator's idnames", description="Display Operator's bl_idname properties", default=False)
 
+    screencast_use_skribe: BoolProperty(name="Use SKRIBE (dedicated, preferred)", default=True)
+    screencast_use_screencast_keys: BoolProperty(name="Use Screencast Keys (addon)", default=True)
+
 
     # Shading Pie
 
@@ -508,7 +516,18 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
             self.draw_about(box)
 
     def draw_general(self, box):
+        global has_skribe, has_screencast_keys
+
+        # check if skribe and the screecast keys addon are present, and only then actually expose the options to toggle their use
+        if has_skribe is None:
+            has_skribe = bool(shutil.which('skribe'))
+
+        if has_screencast_keys is None:
+            has_screencast_keys = bool(get_addon('Screencast Keys')[1])
+
+
         split = box.split()
+
 
         # LEFT
 
@@ -1094,6 +1113,15 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                     col.prop(self, "screencast_highlight_machin3")
                     col.prop(self, "screencast_show_addon")
                     col.prop(self, "screencast_show_idname")
+
+                    if has_skribe or has_screencast_keys:
+                        col.separator()
+
+                        if has_skribe:
+                            col.prop(self, "screencast_use_skribe")
+
+                        if has_screencast_keys:
+                            col.prop(self, "screencast_use_screencast_keys")
 
 
         # SHADING PIE

@@ -2,7 +2,9 @@ import bpy
 from bpy.props import BoolProperty
 import os
 import time
-from ... utils.registration import get_addon
+import subprocess
+import shutil
+from ... utils.registration import get_addon, get_prefs
 from ... utils.system import add_path_to_recent_files, get_incremented_paths
 from ... utils.ui import popup_message, get_icon
 from ... colors import green
@@ -594,6 +596,9 @@ class ReloadLinkedLibraries(bpy.types.Operator):
         return {'FINISHED'}
 
 
+has_skribe = None
+has_screencast_keys = None
+
 class ScreenCast(bpy.types.Operator):
     bl_idname = "machin3.screen_cast"
     bl_label = "MACHIN3: Screen Cast"
@@ -609,26 +614,87 @@ class ScreenCast(bpy.types.Operator):
         return "Screen Cast Recent Operators"
 
     def execute(self, context):
-        # context.scene.M3.screen_cast = not context.scene.M3.screen_cast
+        global has_skribe, has_screencast_keys
 
+        debug = False
+        # debug = True
+
+        if has_skribe is None:
+            has_skribe = bool(shutil.which('skribe'))
+
+        if has_screencast_keys is None:
+            enabled, foldername, _, _ = get_addon('Screencast Keys')
+
+            # print("screencastkeys enabled:", enabled)
+            # print("screencastkeys folder name:", foldername)
+
+            # enable if it's installed but not enabled
+            if foldername:
+                if not enabled and get_prefs().screencast_use_screencast_keys:
+                    print("INFO: Enabling Screencast Keys Addon")
+                    bpy.ops.preferences.addon_enable(module=foldername)
+
+                has_screencast_keys = True
+            else:
+                has_screencast_keys = False
+
+        if debug:
+            print("skribe exists:", has_skribe)
+            print("screncast keys exists:", has_screencast_keys)
+
+        use_skribe = has_skribe and get_prefs().screencast_use_skribe
+        use_screencast_keys = has_screencast_keys and get_prefs().screencast_use_screencast_keys
+
+        # toggle screencast wm prop, which will cause the drawing handler to draw the last used ops
         wm = context.window_manager
-        setattr(wm, 'M3_screen_cast', not getattr(wm, 'M3_screen_cast', False))
+        setattr(wm, 'M3_screen_cast', not wm.M3_screen_cast)
 
-        screencast_keys = get_addon('Screencast Keys')[0]
+        # fetch current casting state now
+        is_casting = wm.M3_screen_cast
 
-        if screencast_keys:
+        # toggle skribe sreencast keys
+        if use_skribe:
 
-            # switch workspaces back and forth
-            # this prevents "internal error: modal gizmo-map handler has invalid area" errors when maximizing the view
+            # turn skribe on
+            if is_casting:
+                if debug:
+                    print("turning skribe ON!")
 
-            current = context.workspace
-            other = [ws for ws in bpy.data.workspaces if ws != current]
+                try:
+                    subprocess.Popen('skribe', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except Exception as e:
+                    print("WARNING: SKRIBE not found?")
+                    print(e)
 
-            if other:
-                context.window.workspace = other[0]
-                context.window.workspace = current
+            # turn skribe off
+            else:
+                if debug:
+                    print("turning skribe OFF!")
 
-            bpy.ops.wm.sk_screencast_keys('INVOKE_DEFAULT')
+                try:
+                    subprocess.Popen('pkill -f SKRIBE'.split())
+
+                except Exception as e:
+                    print("WARNING: something went wrong")
+                    print(e)
+
+        elif use_screencast_keys:
+            screencast_keys = get_addon('Screencast Keys')[0]
+
+            if screencast_keys:
+
+                # switch workspaces back and forth
+                # this prevents "internal error: modal gizmo-map handler has invalid area" errors when maximizing the view
+
+                current = context.workspace
+                other = [ws for ws in bpy.data.workspaces if ws != current]
+
+                if other:
+                    context.window.workspace = other[0]
+                    context.window.workspace = current
+
+                # this op will toggle the keys, so you don't even need to check the state of screencasting, although it's possible that both get out of sync of course
+                bpy.ops.wm.sk_screencast_keys('INVOKE_DEFAULT')
 
         # force handler update via selection event
         if context.visible_objects:
