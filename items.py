@@ -165,6 +165,10 @@ shading_light_items = [('STUDIO', 'Studio', ''),
 cycles_device_items = [('CPU', 'CPU', ''),
                        ('GPU', 'GPU', '')]
 
+compositor_items = [('DISABLED', 'Disabled', ''),
+                    ('CAMERA', 'Camera', ''),
+                    ('ALWAYS', 'Always', '')]
+
 
 bc_orientation_items = [('LOCAL', 'Local', ''),
                         ('NEAREST', 'Nearest', ''),

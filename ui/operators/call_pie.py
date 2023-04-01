@@ -10,33 +10,41 @@ class CallMACHIN3toolsPie(bpy.types.Operator):
     idname: StringProperty()
 
     def invoke(self, context, event):
-        if context.space_data.type == 'VIEW_3D':
+        view = context.space_data
+
+        if view.type == 'VIEW_3D':
+            scene = context.scene
+            m3 = scene.M3
 
             # SHADING PIE
 
             if self.idname == 'shading_pie':
-                engine = context.scene.render.engine
-                device = context.scene.cycles.device
-                shading = context.space_data.shading
+                engine = scene.render.engine
+                device = scene.cycles.device
+                shading = view.shading
 
                 # sync render engine settings
-                if engine != context.scene.M3.render_engine and engine in ['BLENDER_EEVEE', 'CYCLES']:
-                    context.scene.M3.avoid_update = True
-                    context.scene.M3.render_engine = engine
+                if engine != m3.render_engine and engine in ['BLENDER_EEVEE', 'CYCLES']:
+                    m3.avoid_update = True
+                    m3.render_engine = engine
 
                 # sync cyclces device settings
-                if engine == 'CYCLES' and device != context.scene.M3.cycles_device:
-                    context.scene.M3.avoid_update = True
-                    context.scene.M3.cycles_device = device
+                if engine == 'CYCLES' and device != m3.cycles_device:
+                    m3.avoid_update = True
+                    m3.cycles_device = device
 
                 # sync shading.light
-                if shading.light != context.scene.M3.shading_light:
-                    context.scene.M3.avoid_update = True
-                    context.scene.M3.shading_light = shading.light
+                if shading.light != m3.shading_light:
+                    m3.avoid_update = True
+                    m3.shading_light = shading.light
 
-                    context.scene.M3.avoid_update = True
-                    context.scene.M3.use_flat_shadows = shading.show_shadows
+                    m3.avoid_update = True
+                    m3.use_flat_shadows = shading.show_shadows
 
+                # sync custom use_compositor prop
+                if bpy.app.version >= (3, 5, 0) and shading.type in ['MATERIAL', 'RENDERED']:
+                    m3.avoid_update = True
+                    m3.use_compositor = shading.use_compositor
 
                 bpy.ops.wm.call_menu_pie(name='MACHIN3_MT_%s' % (self.idname))
 

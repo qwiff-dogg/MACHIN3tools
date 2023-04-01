@@ -10,7 +10,7 @@ from . utils.tools import get_active_tool
 from . utils.light import adjust_lights_for_rendering, get_area_light_poll
 from . utils.view import sync_light_visibility
 from . utils.material import adjust_bevel_shader
-from . items import eevee_preset_items, align_mode_items, render_engine_items, cycles_device_items, driver_limit_items, axis_items, driver_transform_items, driver_space_items, bc_orientation_items, shading_light_items
+from . items import eevee_preset_items, align_mode_items, render_engine_items, cycles_device_items, driver_limit_items, axis_items, driver_transform_items, driver_space_items, bc_orientation_items, shading_light_items, compositor_items
 
 
 # COLLECTIONS
@@ -301,6 +301,14 @@ class M3SceneProperties(bpy.types.PropertyGroup):
 
         context.scene.cycles.device = self.cycles_device
 
+    def update_use_compositor(self, context):
+        if self.avoid_update:
+            self.avoid_update = False
+            return
+
+        # print("update compositing to", self.use_compositor)
+        context.space_data.shading.use_compositor = self.use_compositor
+
     def update_shading_light(self, context):
         if self.avoid_update:
             self.avoid_update = False
@@ -396,6 +404,8 @@ class M3SceneProperties(bpy.types.PropertyGroup):
 
     render_engine: EnumProperty(name="Render Engine", description="Render Engine", items=render_engine_items, default='BLENDER_EEVEE', update=update_render_engine)
     cycles_device: EnumProperty(name="Render Device", description="Render Device", items=cycles_device_items, default='CPU', update=update_cycles_device)
+
+    use_compositor: EnumProperty(name="Use Viewport Compositing", description="Use Viewport Compositing", items=compositor_items, default='DISABLED', update=update_use_compositor)
 
     shading_light: EnumProperty(name="Lighting Method", description="Lighting Method for Solid/Texture Viewport Shading", items=shading_light_items, default='MATCAP', update=update_shading_light)
     use_flat_shadows: BoolProperty(name="Use Flat Shadows", description="Use Shadows when in Flat Lighting", default=True, update=update_use_flat_shadows)

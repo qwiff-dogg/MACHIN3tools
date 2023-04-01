@@ -1395,17 +1395,36 @@ class PieShading(Menu):
     def draw_eevee_box(self, context, view, layout):
         column = layout.column(align=True)
 
+        # EEVEE PRESETS
+
         row = column.row(align=True)
         row.label(text='Presets')
         row.prop(context.scene.M3, "eevee_preset_set_use_scene_lights", text='', icon='LIGHT_SUN')
         row.prop(context.scene.M3, "eevee_preset_set_use_scene_world", text='', icon='WORLD')
         row.prop(context.scene.M3, "eevee_preset", expand=True)
 
+
+        #  RENDER PASSES
+
         row = column.row(align=True)
         row.label(text='Passes')
         row.separator()
         row.separator()
         row.prop(view.shading, "render_pass", text='')
+
+
+        # VIEWPORT COMPOSITING
+
+        if bpy.app.version >= (3, 5, 0):
+
+            row = column.row(align=True)
+            row.label(text='Compositor')
+            row.separator()
+            row.separator()
+
+            # NOTE: the native prop doesn't support expand for some reason, not in a pie at least, odd
+            # row.prop(view.shading, "use_compositor", text='', expand=True)
+            row.prop(context.scene.M3, "use_compositor", expand=True)
 
 
         # SSR
@@ -1478,23 +1497,54 @@ class PieShading(Menu):
         cycles = context.scene.cycles
         column = layout.column(align=True)
 
-        row = column.split(factor=0.5, align=True)
+
+        # DEVICE
+
+        row = column.split(factor=0.3, align=True)
         row.label(text='Cycles Settings')
         row.prop(context.scene.M3, 'cycles_device', expand=True)
+
+
+        #  RENDER PASSES
+
+        row = column.split(factor=0.29, align=True)
+        row.label(text='Passes')
+        row.prop(view.shading.cycles, "render_pass", text='')
+
+
+        # VIEWPORT COMPOSITING
+
+        if bpy.app.version >= (3, 5, 0):
+
+            row = column.split(factor=0.29, align=True)
+            row.label(text='Compositor')
+            row.prop(context.scene.M3, "use_compositor", expand=True)
+
+
+        # DENOISE
 
         row = column.split(factor=0.33, align=True)
         row.prop(cycles, 'use_preview_denoising', text='Denoise')
         row.prop(cycles, 'use_adaptive_sampling', text='Adaptive')
         row.prop(cycles, 'seed')
 
+
+        # SAMPLES
+
         row = column.split(factor=0.5, align=True)
         row.prop(cycles, 'preview_samples', text='Viewport')
         row.prop(cycles, 'samples', text='Render')
+
+
+        # FAST GI
 
         row = column.split(factor=0.33, align=True)
         row.prop(cycles, 'use_fast_gi', text='Fast GI')
         row.prop(cycles, 'ao_bounces', text="Viewport")
         row.prop(cycles, 'ao_bounces_render', text="Render")
+
+
+        # BEVEL SHADER
 
         use_bevel_shader = get_prefs().activate_render and get_prefs().render_use_bevel_shader
 
