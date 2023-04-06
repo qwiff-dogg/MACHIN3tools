@@ -696,7 +696,7 @@ def draw_cross_3d(co, mx=Matrix(), color=(1, 1, 1), width=1, length=1, alpha=1, 
 
 
 
-def draw_tris(coords, indices=None, mx=Matrix(), color=(1, 1, 1), width=1, alpha=1, xray=True, modal=True):
+def draw_tris(coords, indices=None, mx=Matrix(), color=(1, 1, 1), alpha=1, xray=True, modal=True):
     def draw():
         shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
         shader.bind()
@@ -704,7 +704,6 @@ def draw_tris(coords, indices=None, mx=Matrix(), color=(1, 1, 1), width=1, alpha
 
         gpu.state.depth_test_set('NONE' if xray else 'LESS_EQUAL')
         gpu.state.blend_set('ALPHA' if alpha < 1 else 'NONE')
-        gpu.state.line_width_set(width)
 
         if mx != Matrix():
             batch = batch_for_shader(shader, 'TRIS', {"pos": [mx @ co for co in coords]}, indices=indices)
