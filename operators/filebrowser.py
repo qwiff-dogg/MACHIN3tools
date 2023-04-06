@@ -63,7 +63,14 @@ class Toggle(bpy.types.Operator):
 
             # ASSETBROWSER - cycle asset liraries
             elif context.area.ui_type == 'ASSETS':
-                asset_libraries = ['LOCAL'] + [lib.name for lib in context.preferences.filepaths.asset_libraries]
+                base_libs = ['LOCAL']
+
+                # TODO: make ALL and ESSENTIALS optional via addon prefs
+                if bpy.app.version >= (3, 5, 0):
+                    base_libs.insert(0, 'ALL')
+                    base_libs.append('ESSENTIALS')
+
+                asset_libraries = base_libs + [lib.name for lib in context.preferences.filepaths.asset_libraries]
                 current = context.space_data.params.asset_library_ref
 
                 context.space_data.params.asset_library_ref = step_list(current, asset_libraries, 1)
@@ -85,8 +92,11 @@ class Toggle(bpy.types.Operator):
                 # only cycle importy types when you aren't in the LOCAL lib, in that case the prop is not used and is hidden in the UI, so you may end up changing it accidentally
                 if context.space_data.params.asset_library_ref != 'LOCAL':
                     import_types = ['LINK', 'APPEND', 'APPEND_REUSE']
-                    current = context.space_data.params.import_type
 
+                    if bpy.app.version >= (3, 5, 0):
+                        import_types.insert(0, 'FOLLOW_PREFS')
+
+                    current = context.space_data.params.import_type
                     bpy.context.space_data.params.import_type = step_list(current, import_types, 1)
 
         # 4 toggle hidden files in asset browser
