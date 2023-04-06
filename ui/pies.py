@@ -815,6 +815,34 @@ class PieSave(Menu):
                 r.operator("wm.obj_export", text="Export", icon_value=get_icon('export')).export_selected_objects = True if context.selected_objects else False
 
 
+        #  Plasticity .obj
+
+        if get_prefs().save_pie_show_plasticity_export:
+            row = column.split(factor=0.25, align=True)
+            row.label(text="Plasticity")
+            r = row.row(align=True)
+
+            if wavefront_addon:
+                op = r.operator("import_scene.obj", text="Import", icon_value=get_icon('import'))
+                op.up_axis = 'Z'
+                op.forward_axis = 'Y'
+
+                op = r.operator("export_scene.obj", text="Export", icon_value=get_icon('export')).use_selection = True if context.selected_objects else False
+                op.use_selection = True if context.selected_objects else False
+                op.up_axis = 'Z'
+                op.forward_axis = 'Y'
+
+            else:
+                op = r.operator("wm.obj_import", text="Import", icon_value=get_icon('import'))
+                op.up_axis = 'Z'
+                op.forward_axis = 'Y'
+
+                op = r.operator("wm.obj_export", text="Export", icon_value=get_icon('export'))
+                op.export_selected_objects = True if context.selected_objects else False
+                op.up_axis = 'Z'
+                op.forward_axis = 'Y'
+
+
         #  .fbx
 
         if get_prefs().save_pie_show_fbx_export:
@@ -840,7 +868,6 @@ class PieSave(Menu):
 
             op = r.operator("wm.usd_export", text="Export", icon_value=get_icon('export'))
             op.selected_objects_only = True if context.selected_objects else False
-
 
     def draw_center_column_bottom(self, layout):
         column = layout.column(align=True)

@@ -311,6 +311,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     save_pie_screencast_show: BoolProperty(name="Show Save Pie: ScreenCast Preferences", default=False)
 
     save_pie_show_obj_export: BoolProperty(name="Show .obj Export", default=True)
+    save_pie_show_plasticity_export: BoolProperty(name="Show Plasticity Export", default=True)
     save_pie_show_fbx_export: BoolProperty(name="Show .fbx Export", default=True)
     save_pie_show_usd_export: BoolProperty(name="Show .usd Export", default=True)
 
@@ -1052,6 +1053,23 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                 r.label(text="Show .obj Import/Export")
 
                 split.separator()
+
+
+                # Plasticity
+
+                row = column.row(align=True)
+                split = row.split(factor=0.5, align=True)
+
+                r = split.split(factor=0.42, align=True)
+                r.prop(self, "save_pie_show_plasticity_export", text="True" if self.save_pie_show_plasticity_export else "False", toggle=True)
+                r.label(text="Show Plasticity Import/Export")
+
+                if self.save_pie_show_plasticity_export:
+                    split.label(text=".obj import with Axes set up already", icon='INFO')
+
+                else:
+                    split.separator()
+
 
                 # FBX
 
