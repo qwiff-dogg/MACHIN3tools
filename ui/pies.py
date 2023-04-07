@@ -60,13 +60,16 @@ class PieModes(Menu):
 
                         else:
                             # 4 - LEFT
-                            pie.operator("machin3.mesh_mode", text="Vertex", icon_value=get_icon('vertex')).mode = 'VERT'
+                            depress = active.mode == 'EDIT' and context.scene.tool_settings.mesh_select_mode[0]
+                            pie.operator("machin3.mesh_mode", text="Vertex", depress=depress, icon_value=get_icon('vertex')).mode = 'VERT'
 
                             # 6 - RIGHT
-                            pie.operator("machin3.mesh_mode", text="Face", icon_value=get_icon('face')).mode = 'FACE'
+                            depress = active.mode == 'EDIT' and context.scene.tool_settings.mesh_select_mode[2]
+                            pie.operator("machin3.mesh_mode", text="Face", depress=depress, icon_value=get_icon('face')).mode = 'FACE'
 
                             # 2 - BOTTOM
-                            pie.operator("machin3.mesh_mode", text="Edge", icon_value=get_icon('edge')).mode = 'EDGE'
+                            depress = active.mode == 'EDIT' and context.scene.tool_settings.mesh_select_mode[1]
+                            pie.operator("machin3.mesh_mode", text="Edge", depress=depress, icon_value=get_icon('edge')).mode = 'EDGE'
 
                             # 8 - TOP
                             text, icon = ("Edit", get_icon('edit_mesh')) if active.mode == "OBJECT" else ("Object", get_icon('object'))
