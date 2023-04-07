@@ -22,6 +22,10 @@ class Shade(bpy.types.Operator):
     avoid_sharpen_edge_bevels: BoolProperty(name="Avoid Sharpening HyperCursor's Edge Bevels", description="Avoid Sharpening Edges used for HyperCursor's Edge Bevels", default=True)
 
     clear: BoolProperty(name="Clear Sharps, BWeights, Creases and Seams", default=False)
+    clear_sharps: BoolProperty(name="Clear Sharps, BWeights, Creases and Seams", default=True)
+    clear_bweights: BoolProperty(name="Clear BWeights", default=True)
+    clear_creases: BoolProperty(name="Clear Creases", default=True)
+    clear_seams: BoolProperty(name="Clear Seams", default=True)
 
     include_children: BoolProperty(name="Include Children", default=False)
     include_boolean_objs: BoolProperty(name="Include Boolean Objects", default=False)
@@ -60,9 +64,18 @@ class Shade(bpy.types.Operator):
                 row.prop(self, 'avoid_sharpen_edge_bevels', text="Avoid Edge Bevels", toggle=True)
 
         elif self.mode == 'FLAT':
-            column.prop(self, 'clear', toggle=True)
+            column.prop(self, 'clear', text='Clear' if self.clear else 'Clear Sharps, BWeights, Creases or Seams', toggle=True)
+
+            if self.clear:
+                row = column.row(align=True)
+                row.prop(self, 'clear_sharps', text='Sharps', toggle=True)
+                row.prop(self, 'clear_bweights', text='BWeights', toggle=True)
+                row.prop(self, 'clear_creases', text='Creases', toggle=True)
+                row.prop(self, 'clear_seams', text='Seams', toggle=True)
 
         if context.mode == 'OBJECT':
+            column.separator()
+
             row = column.row(align=True)
             row.prop(self, 'include_children', toggle=True)
             row.prop(self, 'include_boolean_objs', toggle=True)
@@ -70,8 +83,18 @@ class Shade(bpy.types.Operator):
     def invoke(self, context, event):
         if self.mode == 'SMOOTH':
             self.sharpen = event.alt
+
         elif self.mode == 'FLAT':
             self.clear = event.alt
+
+            active = context.active_object
+
+            if active:
+                crease_subds = [mod for mod in active.modifiers if mod.type == 'SUBSURF' and mod.use_creases]
+
+                if self.clear_creases and crease_subds:
+                    self.clear_creases = False
+                    print("INFO: SubD mod using Creases is present, disabling Crease Removal")
 
         self.include_boolean_objs = event.ctrl
         self.include_children = event.shift
@@ -256,10 +279,17 @@ class Shade(bpy.types.Operator):
         cr = bm.edges.layers.crease.verify()
 
         for e in bm.edges:
-            e[bw] = 0
-            e[cr] = 0
-            e.smooth = True
-            e.seam = False
+            if self.clear_sharps:
+                e.smooth = True
+
+            if self.clear_bweights:
+                e[bw] = 0
+
+            if self.clear_creases:
+                e[cr] = 0
+
+            if self.clear_seams:
+                e.seam = False
 
         bm.to_mesh(obj.data)
         bm.clear()
@@ -273,15 +303,22 @@ class Shade(bpy.types.Operator):
         bw = bm.edges.layers.bevel_weight.verify()
         cr = bm.edges.layers.crease.verify()
 
-        # faltten all faces like in object mode
+        # flatten all faces like in object mode
         for f in bm.faces:
             f.smooth = False
 
         for e in bm.edges:
-            e[bw] = 0
-            e[cr] = 0
-            e.smooth = True
-            e.seam = False
+            if self.clear_sharps:
+                e.smooth = True
+
+            if self.clear_bweights:
+                e[bw] = 0
+
+            if self.clear_creases:
+                e[cr] = 0
+
+            if self.clear_seams:
+                e.seam = False
 
         bmesh.update_edit_mesh(mesh)
 
