@@ -75,7 +75,30 @@ class MeshMode(bpy.types.Operator):
 
     @classmethod
     def description(cls, context, properties):
-        return "%s Select\nCTRL + Click: Expand Selection" % (properties.mode.capitalize())
+        mode = properties.mode
+
+        isvert = tuple(context.scene.tool_settings.mesh_select_mode) == (True, False, False)
+        isedge = tuple(context.scene.tool_settings.mesh_select_mode) == (False, True, False)
+        isface = tuple(context.scene.tool_settings.mesh_select_mode) == (False, False, True)
+
+        desc = f"{mode.capitalize()} Select"
+
+        if not (mode == 'VERT' and isvert or mode == 'EDGE' and isedge or mode == 'FACE' and isface):
+            desc += "\nSHIFT: Extend Selection"
+
+        if isvert and mode != 'VERT' or isedge and mode != 'EDGE':
+            desc += '\n   or'
+
+            if mode == 'VERT':
+                desc += "\nCTRL: Contract Selection"
+            else:
+                desc += "\nCTRL: Expand Selection"
+
+        elif isface and mode != 'FACE':
+            desc += '\n   or'
+            desc += "\nCTRL: Contract Selection"
+
+        return desc
 
     def invoke(self, context, event):
         global user_cavity
@@ -99,7 +122,7 @@ class MeshMode(bpy.types.Operator):
             if active_tool and active_tool in get_tools_from_context(context):
                 bpy.ops.wm.tool_set_by_id(name=active_tool)
 
-        bpy.ops.mesh.select_mode(use_extend=False, use_expand=event.ctrl, type=self.mode)
+        bpy.ops.mesh.select_mode(use_extend=event.shift, use_expand=event.ctrl, type=self.mode)
         return {'FINISHED'}
 
 
