@@ -4,6 +4,55 @@ from mathutils import Vector, Matrix
 import numpy as np
 
 
+def get_bbox(mesh=None, coords=None):
+    '''
+    create mesh bounding box, not the evaluated mesh bbox like Blender's obj.bound_box does
+    '''
+
+    vert_count = len(mesh.vertices)
+    coords = np.empty((vert_count, 3), np.float)
+    mesh.vertices.foreach_get('co', np.reshape(coords, vert_count * 3))
+
+    # find extreme values on each axis in both directions
+    xmin = np.min(coords[:, 0])
+    xmax = np.max(coords[:, 0])
+    ymin = np.min(coords[:, 1])
+    ymax = np.max(coords[:, 1])
+    zmin = np.min(coords[:, 2])
+    zmax = np.max(coords[:, 2])
+
+    # create bbox corners based on axis min and max values
+    bbox = [Vector((xmin, ymin, zmin)),
+            Vector((xmax, ymin, zmin)),
+            Vector((xmax, ymax, zmin)),
+            Vector((xmin, ymax, zmin)),
+            Vector((xmin, ymin, zmax)),
+            Vector((xmax, ymin, zmax)),
+            Vector((xmax, ymax, zmax)),
+            Vector((xmin, ymax, zmax))]
+
+    # create bbox centers
+    xcenter = (xmin + xmax) / 2
+    ycenter = (ymin + ymax) / 2
+    zcenter = (zmin + zmax) / 2
+
+    centers = [Vector((xmin, ycenter, zcenter)),
+               Vector((xmax, ycenter, zcenter)),
+               Vector((xcenter, ymin, zcenter)),
+               Vector((xcenter, ymax, zcenter)),
+               Vector((xcenter, ycenter, zmin)),
+               Vector((xcenter, ycenter, zmax))]
+
+    # create dimensions vector
+    xdim = (bbox[1] - bbox[0]).length
+    ydim = (bbox[2] - bbox[1]).length
+    zdim = (bbox[4] - bbox[0]).length
+
+    dimensions = Vector((xdim, ydim, zdim))
+
+    return bbox, centers, dimensions
+
+
 def get_coords(mesh, mx=None, offset=0, indices=False):
     verts = mesh.vertices
     vert_count = len(verts)
@@ -106,6 +155,7 @@ def deselect(mesh):
     mesh.vertices.foreach_set('select', [False] * len(mesh.vertices))
 
     mesh.update()
+
 
 # BMESH
 

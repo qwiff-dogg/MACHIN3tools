@@ -2219,13 +2219,12 @@ class PieCursor(Menu):
                 row = column.split(factor=0.5, align=True)
                 row.scale_y = 1.5
                 row.operator("machin3.origin_to_cursor", text="to Cursor", icon="LAYER_ACTIVE")
-                row.operator("object.origin_set", text="to Geometry", icon="OBJECT_ORIGIN").type = "ORIGIN_GEOMETRY"
+                row.operator("object.origin_set", text="to Geometry", icon="MESH_DATA").type = "ORIGIN_GEOMETRY"
 
-                row = column.split(factor=0.20, align=True)
+                row = column.split(factor=0.5, align=True)
                 row.scale_y = 1.5
-                row.separator()
-                r = row.split(factor=0.7, align=True)
-                r.operator("machin3.origin_to_active", text="to Active", icon="TRANSFORM_ORIGINS")
+                row.operator("machin3.origin_to_active", text="to Active", icon="TRANSFORM_ORIGINS")
+                row.operator("machin3.origin_to_bottom_bounds", text="to Bottom", icon="AXIS_TOP")
 
             elif context.mode == 'EDIT_MESH':
                 row = column.split(factor=0.25)

@@ -1,10 +1,15 @@
 import bpy
+from bpy.props import BoolProperty
+from mathutils import Matrix
 import bmesh
 from ... utils.math import get_loc_matrix, get_rot_matrix, get_sca_matrix, create_rotation_matrix_from_vertex, create_rotation_matrix_from_edge, get_center_between_verts, create_rotation_matrix_from_face
 from ... utils.math import average_locations
 from ... utils.ui import popup_message
-from ... utils.object import set_obj_origin
+from ... utils.object import set_obj_origin, get_eval_bbox
+from ... utils.mesh import get_bbox
+from ... utils.draw import draw_point 
 from ... utils.registration import get_addon
+from ... colors import yellow
 
 
 decalmachine = None
@@ -218,3 +223,72 @@ class OriginToCursor(bpy.types.Operator):
 
             # change the origin
             set_obj_origin(active, mx, bm=bm, decalmachine=decalmachine, meshmachine=meshmachine)
+
+
+class OriginToBottomBounds(bpy.types.Operator):
+    bl_idname = "machin3.origin_to_bottom_bounds"
+    bl_label = "MACHIN3: Origin to Bottom Bounds"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    evaluated: BoolProperty(name="Evaluated Object Bounds", default=False)
+
+    @classmethod
+    def description(cls, context, properties):
+        desc = "Set Object Origin to Bounding Box Bottom Center"
+        desc += "\nALT: Determine Bottom Center based on Evaluated Mesh, taking Modifiers into account"
+        return desc
+
+    @classmethod
+    def poll(cls, context):
+        if context.mode == 'OBJECT':
+            return [obj for obj in context.selected_objects if obj.type == 'MESH']
+
+    def draw(self, context):
+        layout = self.layout
+        column = layout.column()
+
+        column.prop(self, 'evaluated', toggle=True)
+
+    def invoke(self, context, event):
+        self.evaluated = event.alt
+
+        return self.execute(context)
+        
+    def execute(self, context):
+        debug = False
+        # debug = True
+
+        if debug:
+            print("\nevaluated bottom bounds origin:", self.evaluated)
+
+        sel = [obj for obj in context.selected_objects if obj.type == 'MESH']
+
+        for obj in sel:
+            if debug:
+                print(obj.name)
+
+            mx = obj.matrix_world
+            _, rot, sca = mx.decompose()
+
+            # get bounding box bottom center, either of the evaluated mesh or the original one
+            if self.evaluated:
+                dg = context.evaluated_depsgraph_get()
+                bbox = get_eval_bbox(obj)
+                bottom_center = mx @ average_locations([bbox[0], bbox[3], bbox[4], bbox[7]])
+
+            else:
+                _, centers, _ = get_bbox(obj.data)
+                bottom_center = mx @ centers[4]
+
+            if debug:
+                print("bottom center:", bottom_center)
+                draw_point(bottom_center, mx=mx, color=yellow, modal=False)
+                context.area.tag_redraw()
+
+            # build new origin matrix
+            omx = Matrix.LocRotScale(bottom_center, rot, sca)
+
+            # and set the origin
+            set_obj_origin(obj, omx, bm=None, decalmachine=False, meshmachine=False)
+        
+        return {'FINISHED'}
