@@ -258,6 +258,8 @@ class OriginToBottomBounds(bpy.types.Operator):
         debug = False
         # debug = True
 
+        # TODO: DM + MM stuff
+
         if debug:
             print("\nevaluated bottom bounds origin:", self.evaluated)
 
@@ -272,11 +274,13 @@ class OriginToBottomBounds(bpy.types.Operator):
 
             # get bounding box bottom center, either of the evaluated mesh or the original one
             if self.evaluated:
+                print(" getting evaluated bottom center")
                 dg = context.evaluated_depsgraph_get()
                 bbox = get_eval_bbox(obj)
                 bottom_center = mx @ average_locations([bbox[0], bbox[3], bbox[4], bbox[7]])
 
             else:
+                print(" getting orignial bottom center")
                 _, centers, _ = get_bbox(obj.data)
                 bottom_center = mx @ centers[4]
 

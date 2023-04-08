@@ -45,8 +45,9 @@ def clean_up_groups(context):
 
         # remove empty groups
         if obj.M3.is_group_empty and not obj.children:
-            print("INFO: Removing empty Group", obj.name)
-            bpy.data.objects.remove(obj, do_unlink=True)
+            if r.get_prefs().group_remove_empty:
+                print("INFO: Removing empty Group", obj.name)
+                bpy.data.objects.remove(obj, do_unlink=True)
 
         elif obj.M3.is_group_object:
             if obj.parent:

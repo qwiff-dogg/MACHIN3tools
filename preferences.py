@@ -239,7 +239,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     group_size: FloatProperty(name="Group Empty Draw Size", description="Default Group Size", default=0.2)
     group_fade_sizes: BoolProperty(name="Fade Group Empty Sizes", description="Make Sub Group's Emtpies smaller than their Parents", default=True)
     group_fade_factor: FloatProperty(name="Fade Group Size Factor", description="Factor by which to decrease each Group Empty's Size", default=0.8, min=0.1, max=0.9)
-
+    group_remove_empty: BoolProperty(name="Remove Empty Groups", description="Automatically remove Empty Groups in each Cleanup Pass", default=True)
 
     # Asset Browser tool
 
@@ -345,7 +345,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     matcap2_switch_background_type: EnumProperty(name="Matcap 2 Background Type", items=matcap_background_type_items, default="THEME")
     matcap2_switch_background_viewport_color: FloatVectorProperty(name="Matcap 2 Background Color", subtype='COLOR', default=[0.05, 0.05, 0.05], size=3, min=0, max=1)
 
-    auto_smooth_angle_presets: StringProperty(name="Autosmooth Angle Preset", default="10, 20, 30, 60, 180", update=update_auto_smooth_angle_presets)
+    auto_smooth_angle_presets: StringProperty(name="Autosmooth Angle Preset", default="10, 15, 20, 30, 60, 180", update=update_auto_smooth_angle_presets)
 
 
     # Views Pie
@@ -778,6 +778,10 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                 row = column.split(factor=0.2, align=True)
                 row.prop(self, "use_group_outliner_toggles", text='Outliner Toggles', toggle=True)
                 row.label(text="Show Group Toggles in Outliner Header.")
+
+                row = column.split(factor=0.2, align=True)
+                row.prop(self, "group_remove_empty", text='Remove Empty', toggle=True)
+                row.label(text="Automatically remove Empty Groups in each Cleanup Pass.")
 
                 column.separator()
 
