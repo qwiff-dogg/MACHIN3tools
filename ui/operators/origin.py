@@ -250,15 +250,23 @@ class OriginToBottomBounds(bpy.types.Operator):
         column.prop(self, 'evaluated', toggle=True)
 
     def invoke(self, context, event):
+        global decalmachine, meshmachine
+
         self.evaluated = event.alt
+
+        if decalmachine is None:
+            decalmachine = get_addon('DECALmachine')[0]
+
+        if meshmachine is None:
+            meshmachine = get_addon('MESHmachine')[0]
 
         return self.execute(context)
         
     def execute(self, context):
+        global decalmachine, meshmachine
+
         debug = False
         # debug = True
-
-        # TODO: DM + MM stuff
 
         if debug:
             print("\nevaluated bottom bounds origin:", self.evaluated)
@@ -274,13 +282,17 @@ class OriginToBottomBounds(bpy.types.Operator):
 
             # get bounding box bottom center, either of the evaluated mesh or the original one
             if self.evaluated:
-                print(" getting evaluated bottom center")
+                if debug:
+                    print(" getting evaluated bottom center")
+
                 dg = context.evaluated_depsgraph_get()
                 bbox = get_eval_bbox(obj)
                 bottom_center = mx @ average_locations([bbox[0], bbox[3], bbox[4], bbox[7]])
 
             else:
-                print(" getting orignial bottom center")
+                if debug:
+                    print(" getting orignial bottom center")
+
                 _, centers, _ = get_bbox(obj.data)
                 bottom_center = mx @ centers[4]
 
@@ -293,6 +305,6 @@ class OriginToBottomBounds(bpy.types.Operator):
             omx = Matrix.LocRotScale(bottom_center, rot, sca)
 
             # and set the origin
-            set_obj_origin(obj, omx, bm=None, decalmachine=False, meshmachine=False)
+            set_obj_origin(obj, omx, bm=None, decalmachine=decalmachine, meshmachine=meshmachine)
         
         return {'FINISHED'}
