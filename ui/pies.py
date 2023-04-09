@@ -1427,19 +1427,21 @@ class PieShading(Menu):
 
         # EEVEE PRESETS
 
-        row = column.row(align=True)
+        split = column.split(factor=0.3, align=True)
+
+        row = split.row(align=True)
         row.label(text='Presets')
         row.prop(context.scene.M3, "eevee_preset_set_use_scene_lights", text='', icon='LIGHT_SUN')
         row.prop(context.scene.M3, "eevee_preset_set_use_scene_world", text='', icon='WORLD')
+
+        row = split.row(align=True)
         row.prop(context.scene.M3, "eevee_preset", expand=True)
 
 
         #  RENDER PASSES
 
-        row = column.row(align=True)
+        row = column.split(factor=0.3, align=True)
         row.label(text='Passes')
-        row.separator()
-        row.separator()
         row.prop(view.shading, "render_pass", text='')
 
 
@@ -1447,10 +1449,8 @@ class PieShading(Menu):
 
         if bpy.app.version >= (3, 5, 0):
 
-            row = column.row(align=True)
+            row = column.split(factor=0.3, align=True)
             row.label(text='Compositor')
-            row.separator()
-            row.separator()
 
             # NOTE: the native prop doesn't support expand for some reason, not in a pie at least, odd
             # row.prop(view.shading, "use_compositor", text='', expand=True)
@@ -1537,7 +1537,7 @@ class PieShading(Menu):
 
         #  RENDER PASSES
 
-        row = column.split(factor=0.29, align=True)
+        row = column.split(factor=0.297, align=True)
         row.label(text='Passes')
         row.prop(view.shading.cycles, "render_pass", text='')
 
@@ -1546,7 +1546,7 @@ class PieShading(Menu):
 
         if bpy.app.version >= (3, 5, 0):
 
-            row = column.split(factor=0.29, align=True)
+            row = column.split(factor=0.31, align=True)
             row.label(text='Compositor')
             row.prop(context.scene.M3, "use_compositor", expand=True)
 
