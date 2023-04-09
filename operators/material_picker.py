@@ -8,6 +8,7 @@ from .. utils.draw import draw_label, update_HUD_location, draw_init
 from .. utils.registration import get_prefs
 from .. utils.system import printd
 from .. utils.ui import init_cursor, init_status, finish_status
+from .. utils.asset import get_asset_details_from_space
 from .. items import alt, ctrl
 from .. colors import white, yellow, green, red
 
@@ -73,24 +74,21 @@ class MaterialPicker(bpy.types.Operator):
         dims = draw_label(context, title=title, coords=Vector((self.HUD_x, self.HUD_y)), color=color, center=False, return_dimensions=True)
 
         if self.assign_from_assetbrowser:
-            draw_label(context, title=self.asset['import_type'], coords=Vector((self.HUD_x + dims[0], self.HUD_y)), center=False, color=white, alpha=0.5, return_dimensions=True)
 
-            self.offset += 18
+            if self.asset['error']:
+                self.offset += 18
+                draw_label(context, title=self.asset['error'], coords=Vector((self.HUD_x, self.HUD_y)), offset=self.offset, center=False, color=red, alpha=1)
 
-            if self.asset:
-                asset_type = self.asset['asset_type']
-
-                if asset_type == 'Material':
-                    title = f"{self.asset['library']} • {self.asset['blend_name']} • "
-                    dims = draw_label(context, title=title, coords=Vector((self.HUD_x, self.HUD_y)), offset=self.offset, center=False, color=white, alpha=0.5, return_dimensions=True)
-
-                    title = f"{self.asset['asset_name']}"
-                    draw_label(context, title=title, coords=Vector((self.HUD_x + dims[0], self.HUD_y)), offset=self.offset, center=False, color=white)
-
-                else:
-                    draw_label(context, title=f"Can't assign {asset_type} asset as a Material", coords=Vector((self.HUD_x, self.HUD_y)), offset=self.offset, color=red, center=False)
             else:
-                draw_label(context, title="No Asset Selected in Asset Browser", coords=Vector((self.HUD_x, self.HUD_y)), offset=self.offset, color=red, center=False)
+                draw_label(context, title=self.asset['import_type'], coords=Vector((self.HUD_x + dims[0], self.HUD_y)), center=False, color=white, alpha=0.5, return_dimensions=True)
+
+                self.offset += 18
+
+                title = f"{self.asset['library']} • {self.asset['blend_name']} • "
+                dims = draw_label(context, title=title, coords=Vector((self.HUD_x, self.HUD_y)), offset=self.offset, center=False, color=white, alpha=0.5, return_dimensions=True)
+
+                title = f"{self.asset['material_name']}"
+                draw_label(context, title=title, coords=Vector((self.HUD_x + dims[0], self.HUD_y)), offset=self.offset, center=False, color=white)
 
         else:
             self.offset += 18
@@ -99,7 +97,6 @@ class MaterialPicker(bpy.types.Operator):
 
             dims = draw_label(context, title='Material ', coords=Vector((self.HUD_x, self.HUD_y)), offset=self.offset, center=False, color=white, alpha=0.5, return_dimensions=True)
             draw_label(context, title=self.pick_material_name, coords=Vector((self.HUD_x + dims[0], self.HUD_y)), offset=self.offset, center=False, color=color, alpha=1)
-
 
     def modal(self, context, event):
         context.area.tag_redraw()
@@ -117,7 +114,7 @@ class MaterialPicker(bpy.types.Operator):
             context.window.cursor_set("EYEDROPPER")
 
             # fetch selected asset from asset browser
-            self.asset = self.get_selected_asset()
+            self.asset = self.get_selected_asset(context, debug=False)
 
             # if self.asset:
                 # printd(self.asset)
@@ -184,27 +181,26 @@ class MaterialPicker(bpy.types.Operator):
 
                         # Import Material from ASSETBROWSER and assign it to the picked object at matindex or to the selected faces in edit mode
 
-                        if self.assign_from_assetbrowser:
-                            if self.asset['asset_type'] == 'Material':
+                        if not self.asset['error']:
 
-                                # import material from assetbrowser, except when its in the scene already
-                                mat = self.get_material_from_assetbrowser(context)
+                            # import material from assetbrowser, except when its in the scene already
+                            mat = self.get_material_from_assetbrowser(context)
 
-                                # object mode - apply material at the matindex of the hitobject, and keep the modal going, as yo umay want to apply the material to other parts or objects
-                                if context.mode == 'OBJECT':
-                                    # print(" applying to obj", hitobj.name, "at index", matindex)
+                            # object mode - apply material at the matindex of the hitobject, and keep the modal going, as you may want to apply the material to other parts or objects
+                            if context.mode == 'OBJECT':
+                                # print(" applying to obj", hitobj.name, "at index", matindex)
 
-                                    if hitobj.material_slots:
-                                        hitobj.material_slots[matindex].material = mat
-                                    else:
-                                        hitobj.data.materials.append(mat)
+                                if hitobj.material_slots:
+                                    hitobj.material_slots[matindex].material = mat
+                                else:
+                                    hitobj.data.materials.append(mat)
 
-                                # edit mode - assign the material to active's face selection in edit mode, and FINISH
-                                elif context.mode == 'EDIT_MESH':
-                                    self.assign_material_in_editmode(context, mat)
+                            # edit mode - assign the material to active's face selection in edit mode, and FINISH
+                            elif context.mode == 'EDIT_MESH':
+                                self.assign_material_in_editmode(context, mat)
 
-                                    self.finish(context)
-                                    return {'FINISHED'}
+                                self.finish(context)
+                                return {'FINISHED'}
 
 
                     # ASSIGN - assign the picked material to the selection of objects, and FINISH
@@ -306,7 +302,7 @@ class MaterialPicker(bpy.types.Operator):
         self.areas, self.asset_browser = self.get_areas(context)
 
         # then fetch the selected asset
-        self.asset = self.get_selected_asset()
+        self.asset = self.get_selected_asset(context, debug=False)
 
         # int statusbar
         init_status(self, context, func=draw_material_pick_status(self))
@@ -331,7 +327,7 @@ class MaterialPicker(bpy.types.Operator):
         for area in context.screen.areas:
             if area.type == 'FILE_BROWSER' and area.ui_type == 'ASSETS':
                 area_type = 'ASSET_BROWSER'
-                asset_browser = area.spaces.active.params
+                asset_browser = area.spaces.active
 
             else:
                 area_type = area.type
@@ -359,37 +355,74 @@ class MaterialPicker(bpy.types.Operator):
                     # print(" in y of", areaname, "too")
                     return areaname
 
-    def get_selected_asset(self):
+    def get_selected_asset(self, context, debug=False):
         '''
         from the asset browser, fetch the selected asset
         '''
 
-        asset = None
-
         if self.asset_browser:
-            ab = self.asset_browser
+            libname, libpath, filename, import_type = get_asset_details_from_space(context, self.asset_browser, debug=debug)
 
-            directory = ab.directory.decode().replace('\\', '/')
-            filename = ab.filename.replace('\\', '/')
+            if libpath:
+                # NOTE: the filename (path) will look different on Windows and Linux, it will mix \\ and / on Windows, lol
 
-            split = filename.split('/')
+                # Linux
+                # path: Insets.blend/Object/Cross
+                # split path: ['Insets.blend', 'Cross']
 
-            blendpath = os.path.join(directory, split[0])
-            blend_name = split[0].replace('.blend', '')
-            asset_type, asset_name = split[1:3]
+                # Windows
+                # path: Insets.blend\Object/Assembly Asset
+                # split path: ['Insets.blend\\Object/Cross']
 
-            asset = {'import_type': ab.import_type.title().replace('_', ' '),
-                     'library': ab.asset_library_ref,
-                     'catalog_id': ab.catalog_id,
-                     'blendpath': blendpath,
-                     'blend_name': blend_name,
-                     'asset_type': asset_type,
-                     'asset_name': asset_name}
+                # so replace that shit
+                path = filename.replace('\\', '/')
 
-            # printd(asset)
+                # is it actually a material asset?
+                if '/Material/' in path:
+
+                    # split relative path into blend path and materialname
+                    blendname, matname = path.split('/Material/')
+                    # print("blendname:", blendname)
+                    # print("matname:", matname)
+
+                    # check if the blend path actually exists, if you switch libraries without making a new selection, it's possible to have get a libpath and blend file that don't match
+                    if os.path.exists(os.path.join(libpath, blendname)):
+
+                        directory = os.path.join(libpath, blendname, 'Material')
+                        # print("directory:", directory)
+
+                        asset = {'error': None,
+                                 'import_type': import_type.title().replace('_', ' '),
+                                 'library': libname,
+                                 'directory': directory,
+                                 'blend_name': blendname.replace('.blend', ''),
+                                 'material_name': matname}
+
+
+                    else:
+                        msg = f".blend file does not exist: {os.path.join(libpath, blendname)}"
+                        print("WARNING:", msg)
+                        asset = {'error': msg}
+
+
+                else:
+                    msg = "No material selected in asset browser!"
+                    print("WARNING:", msg)
+                    asset = {'error': msg}
+
+            else:
+                msg = "LOCAL or unsupported library chosen!"
+                print("WARNING:", msg)
+                asset = {'error': msg}
 
         else:
-            print("there is no asset browser")
+            msg = "There is no asset browser in this workspace"
+            print("WARNING:", msg)
+            asset = {'error': msg}
+
+
+        if debug:
+            printd(asset)
 
         return asset
 
@@ -441,8 +474,8 @@ class MaterialPicker(bpy.types.Operator):
 
     def get_material_from_assetbrowser(self, context):
         import_type = self.asset['import_type']
-        directory = os.path.join(self.asset['blendpath'], 'Material')
-        filename = self.asset['asset_name']
+        directory = self.asset['directory']
+        filename = self.asset['material_name']
 
         # print("\nassset browser material import")
         mat = bpy.data.materials.get(filename)
