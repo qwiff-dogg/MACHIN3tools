@@ -107,6 +107,7 @@ class Shade(bpy.types.Operator):
             hypercursor = get_addon('HyperCursor')[0]
 
         if context.mode == "OBJECT":
+            view = context.space_data
             selected = [(obj, True, obj.data.use_auto_smooth if obj.type == 'MESH' else False) for obj in context.selected_objects if obj.data]
 
             children = [(ob, ob.visible_get(), ob.data.use_auto_smooth if ob.type == 'MESH' else False) for obj, _, _ in selected for ob in obj.children_recursive if obj.data and ob.name in context.view_layer.objects] if self.include_children else []
@@ -123,6 +124,11 @@ class Shade(bpy.types.Operator):
 
             # ensure children/boolean objects are visible and selected
             for obj, state, _ in more_objects:
+                
+                # ensure the obj is in local view
+                if view.local_view and not obj.local_view_get(view):
+                    obj.local_view_set(view, True)
+
                 if not state:
                     obj.hide_set(False)
                 obj.select_set(True)
