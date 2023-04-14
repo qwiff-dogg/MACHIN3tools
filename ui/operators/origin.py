@@ -63,11 +63,11 @@ class OriginToActive(bpy.types.Operator):
             bpy.ops.ed.undo_push(message="Flush Edit Mode Changes")
             bpy.ops.object.mode_set(mode='EDIT')
 
-            self.origin_to_editmesh(active, only_location=event.alt, only_rotation=event.ctrl, decalmachine=decalmachine, meshmachine=meshmachine)
+            self.origin_to_editmesh(context, active, only_location=event.alt, only_rotation=event.ctrl, decalmachine=decalmachine, meshmachine=meshmachine)
 
         return {'FINISHED'}
 
-    def origin_to_editmesh(self, active, only_location, only_rotation, decalmachine, meshmachine):
+    def origin_to_editmesh(self, context, active, only_location, only_rotation, decalmachine, meshmachine):
         mx = active.matrix_world.copy()
 
         bm = bmesh.from_edit_mesh(active.data)
@@ -92,7 +92,7 @@ class OriginToActive(bpy.types.Operator):
             loc = get_loc_matrix(mx @ center)
 
             e = bm.select_history[-1] if bm.select_history else edges[0]
-            rot = create_rotation_matrix_from_edge(active, e)
+            rot = create_rotation_matrix_from_edge(context, active, e)
 
         elif tuple(bpy.context.scene.tool_settings.mesh_select_mode) == (False, False, True):
             faces = [f for f in bm.faces if f.select]
@@ -102,7 +102,7 @@ class OriginToActive(bpy.types.Operator):
             loc = get_loc_matrix(mx @ center)
 
             f = bm.faces.active if bm.faces.active and bm.faces.active in faces else faces[0]
-            rot = create_rotation_matrix_from_face(mx, f)
+            rot = create_rotation_matrix_from_face(context, mx, f)
 
         # with alt pressed, ignore vert/edge/face rotation
         if only_location:
