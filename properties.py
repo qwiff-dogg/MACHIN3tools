@@ -38,6 +38,20 @@ selected = []
 
 
 class M3SceneProperties(bpy.types.PropertyGroup):
+
+    # FOCUS
+
+    focus_history: CollectionProperty(type=HistoryEpochCollection)
+
+
+    # SAVE Pie
+
+    use_undo_save: BoolProperty(name="Use Undo Save", description="Save before Undoing\nBe warned, depending on your scene complexity, this can noticably affect your undo speed", default=False)
+    use_redo_save: BoolProperty(name="Use Redo Save", description="Save before first Operator Redos", default=False)
+
+
+    # MODES Pie
+
     def update_xray(self, context):
         x = (self.pass_through, self.show_edit_mesh_wire)
         shading = context.space_data.shading
@@ -101,6 +115,10 @@ class M3SceneProperties(bpy.types.PropertyGroup):
             else:
                 ts.uv_select_mode = "VERTEX"
 
+    pass_through: BoolProperty(name="Pass Through", default=False, update=update_xray)
+    show_edit_mesh_wire: BoolProperty(name="Show Edit Mesh Wireframe", default=False, update=update_xray)
+    uv_sync_select: BoolProperty(name="Synce Selection", default=False, update=update_uv_sync_select)
+
     def update_show_cavity(self, context):
         t = (self.show_cavity, self.show_curvature)
         shading = context.space_data.shading
@@ -116,29 +134,11 @@ class M3SceneProperties(bpy.types.PropertyGroup):
         elif t == (False, True):
             shading.cavity_type = "SCREEN"
 
-    def update_grouppro_dotnames(self, context):
-        gpcols = [col for col in bpy.data.collections if col.created_with_gp]
-
-        for col in gpcols:
-            # hide collections
-            if self.grouppro_dotnames:
-                if not col.name.startswith("."):
-                    col.name = ".%s" % col.name
-
-            else:
-                if col.name.startswith("."):
-                    col.name = col.name[1:]
-
-    pass_through: BoolProperty(name="Pass Through", default=False, update=update_xray)
-    show_edit_mesh_wire: BoolProperty(name="Show Edit Mesh Wireframe", default=False, update=update_xray)
-    uv_sync_select: BoolProperty(name="Synce Selection", default=False, update=update_uv_sync_select)
-
     show_cavity: BoolProperty(name="Cavity", default=True, update=update_show_cavity)
     show_curvature: BoolProperty(name="Curvature", default=False, update=update_show_cavity)
 
-    focus_history: CollectionProperty(type=HistoryEpochCollection)
 
-    grouppro_dotnames: BoolProperty(name=".dotname GroupPro collections", default=False, update=update_grouppro_dotnames)
+    # SHADING Pie
 
     def update_eevee_preset(self, context):
         eevee = context.scene.eevee
@@ -392,9 +392,6 @@ class M3SceneProperties(bpy.types.PropertyGroup):
         if self.use_bevel_shader:
             adjust_bevel_shader(context)
 
-
-    # SHADING
-
     eevee_preset: EnumProperty(name="Eevee Preset", description="Eevee Quality Presets", items=eevee_preset_items, default='NONE', update=update_eevee_preset)
     eevee_preset_set_use_scene_lights: BoolProperty(name="Set Use Scene Lights", description="Set Use Scene Lights when changing Eevee Preset", default=False)
     eevee_preset_set_use_scene_world: BoolProperty(name="Set Use Scene World", description="Set Use Scene World when changing Eevee Preset", default=False)
@@ -429,13 +426,13 @@ class M3SceneProperties(bpy.types.PropertyGroup):
     bevel_shader_radius: FloatProperty(name="Radius", description="Bevel Shader Global Radius", default=0.015, min=0, precision=3, step=0.01, update=update_bevel_shader)
 
 
-    # VIEW
+    # VIEWS Pie
 
     custom_views_local: BoolProperty(name="Custom Local Views", description="Use Custom Views, based on the active object's orientation", default=False, update=update_custom_views_local)
     custom_views_cursor: BoolProperty(name="Custom Cursor Views", description="Use Custom Views, based on the cursor's orientation", default=False, update=update_custom_views_cursor)
 
 
-    # ALIGN
+    # ALIGN Pie
 
     align_mode: EnumProperty(name="Align Mode", items=align_mode_items, default="VIEW")
 

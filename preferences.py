@@ -307,8 +307,11 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     # Save Pie
 
     save_pie_versioned_show: BoolProperty(name="Show Save Pie: Versioned Startup File Preferences", default=False)
+    save_pie_undo_save_show: BoolProperty(name="Show Save Pie: Undo Save Preferences", default=False)
     save_pie_import_show: BoolProperty(name="Show Save Pie: Import/Export Preferences", default=False)
     save_pie_screencast_show: BoolProperty(name="Show Save Pie: ScreenCast Preferences", default=False)
+
+    save_pie_use_undo_save: BoolProperty(name="Make Pre-Undo Saving available in the Pie", default=False)
 
     save_pie_show_obj_export: BoolProperty(name="Show .obj Export", default=True)
     save_pie_show_plasticity_export: BoolProperty(name="Show Plasticity Export", default=True)
@@ -1039,6 +1042,21 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                     r.label(text="Use CTRL + U keymap override")
 
 
+            # Undo Save
+
+            bb = b.box()
+            bb.prop(self, 'save_pie_undo_save_show', text="Save Pie: Pre-Undo Save", icon='TRIA_DOWN' if self.save_pie_undo_save_show else 'TRIA_RIGHT', emboss=False)
+
+            if self.save_pie_undo_save_show:
+                column = bb.column(align=True)
+
+                row = column.row(align=True)
+                r = row.split(factor=0.2, align=True)
+
+                r.prop(self, "save_pie_use_undo_save", text="True" if self.save_pie_use_undo_save else "False", toggle=True)
+                r.label(text="Make Pre-Undo Saving available in the Pie")
+                r.label(text="Useful if you notice Undoing causing crashes", icon='INFO')
+
             # Import / Export
 
             bb = b.box()
@@ -1069,7 +1087,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                 r.label(text="Show Plasticity Import/Export")
 
                 if self.save_pie_show_plasticity_export:
-                    split.label(text=".obj import with Axes set up already", icon='INFO')
+                    split.label(text=".obj import/export with Axes set up already", icon='INFO')
 
                 else:
                     split.separator()

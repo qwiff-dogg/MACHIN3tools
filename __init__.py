@@ -77,7 +77,7 @@ from . properties import M3SceneProperties, M3ObjectProperties
 from . utils.registration import get_core, get_tools, get_pie_menus
 from . utils.registration import register_classes, unregister_classes, register_keymaps, unregister_keymaps, register_icons, unregister_icons, register_msgbus, unregister_msgbus
 from . ui.menus import object_context_menu, mesh_context_menu, add_object_buttons, material_pick_button, outliner_group_toggles, extrude_menu, group_origin_adjustment_toggle, render_menu, render_buttons
-from . handlers import focus_HUD, surface_slide_HUD, update_group, update_asset, update_msgbus, screencast_HUD, increase_lights_on_render_end, decrease_lights_on_render_start, axes_HUD
+from . handlers import focus_HUD, surface_slide_HUD, update_group, update_asset, update_msgbus, screencast_HUD, increase_lights_on_render_end, decrease_lights_on_render_start, axes_HUD, undo_save
 
 
 def register():
@@ -145,6 +145,7 @@ def register():
     bpy.app.handlers.render_cancel.append(increase_lights_on_render_end)
     bpy.app.handlers.render_complete.append(increase_lights_on_render_end)
 
+    bpy.app.handlers.undo_pre.append(undo_save)
 
     # REGISTRATION OUTPUT
 
@@ -183,6 +184,7 @@ def unregister():
     bpy.app.handlers.render_cancel.remove(increase_lights_on_render_end)
     bpy.app.handlers.render_complete.remove(increase_lights_on_render_end)
 
+    bpy.app.handlers.undo_pre.remove(undo_save)
 
     # MSGBUS
 

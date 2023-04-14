@@ -1,4 +1,5 @@
 import bpy
+import os
 from bpy.app.handlers import persistent
 from . utils.draw import draw_axes_HUD, draw_focus_HUD, draw_surface_slide_HUD, draw_screen_cast_HUD
 from . utils.registration import get_prefs, reload_msgbus, get_addon
@@ -255,6 +256,7 @@ def decrease_lights_on_render_start(scene):
     if get_prefs().activate_render and get_prefs().render_sync_light_visibility:
         sync_light_visibility(scene)
 
+
 @persistent
 def increase_lights_on_render_end(scene):
     m3 = scene.M3
@@ -273,3 +275,76 @@ def increase_lights_on_render_end(scene):
                 m3.is_light_decreased_by_handler = False
 
                 adjust_lights_for_rendering(mode='INCREASE')
+
+
+last_active_operator = None
+
+@persistent
+def undo_save(scene):
+    debug = False
+    # debug = True
+
+    if get_prefs().save_pie_use_undo_save:
+        m3 = scene.M3
+
+        if m3.use_undo_save:
+            global last_active_operator
+
+            C = bpy.context
+            bprefs =  bpy.context.preferences
+            
+            if debug:
+                print()
+                print("active operator:", C.active_operator)
+
+            first_redo = False
+
+            # if the active operator has changed, then this it's the first redo (for that op)
+            if m3.use_redo_save and C.active_operator:
+                if last_active_operator != C.active_operator:
+                    last_active_operator = C.active_operator
+                    first_redo = True
+
+            if C.active_operator is None or first_redo:
+                # check if a custom temp dir is set
+                temp_dir = bprefs.filepaths.temporary_directory
+                
+                # if not fetch the system's temp dir
+                if not temp_dir:
+                    from tempfile import gettempdir
+                    temp_dir = gettempdir()
+
+                if temp_dir:
+                    if debug:
+                        if first_redo:
+                            print("saving before first redo")
+                        else:
+                            print("saving before undoing")
+
+                        # print(" to temp folder:", temp_dir)
+
+                    # get save path
+                    # path = os.path.join(temp_dir, 'undo_save.blend')
+
+                    filepath = bpy.data.filepath
+                    # print("filepath:", filepath)
+
+                    if filepath:
+                        filename = os.path.basename(filepath)
+                        
+                    else:
+                        filename = "startup.blend"
+
+                    filepath = os.path.join(temp_dir, filename)
+
+                    if debug: 
+                        print(" to temp folder:", filepath)
+
+                    if debug:
+                        from time import time
+                        start = time()
+
+                    self = bpy.ops.wm.save_as_mainfile(filepath=filepath, check_existing=True, copy=True, compress=True)
+
+                    if debug:
+                        print("time:", time() - start)

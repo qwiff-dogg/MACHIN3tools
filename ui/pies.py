@@ -771,7 +771,6 @@ class PieSave(Menu):
 
     def draw_left_column(self, wm, scene, layout):
         column = layout.column(align=True)
-
         column.scale_x = 1.1
 
         row = column.row(align=True)
@@ -781,7 +780,22 @@ class PieSave(Menu):
         row.operator("wm.call_menu", text="All Recent", icon_value=get_icon('open_recent')).name = "TOPBAR_MT_file_open_recent"
 
         column.separator()
-        column.operator("wm.recover_auto_save", text="Recover Auto Save...", icon_value=get_icon('recover_auto_save'))
+
+        if get_prefs().save_pie_use_undo_save:
+            row = column.row(align=True)
+            row.prop(scene.M3, "use_undo_save", text="Undo Save", icon='LOOP_BACK')
+
+            r = row.row(align=True)
+            r.active = scene.M3.use_undo_save
+            r.prop(scene.M3, "use_redo_save", text="Redo Save", icon='FILE_REFRESH')
+
+        is_undo_save = get_prefs().save_pie_use_undo_save and scene.M3.use_undo_save
+
+        row = column.row(align=True)
+        row.scale_y = 1.2
+        text = "Recover Auto- or Undo-Save" if is_undo_save else "Recover Auto-Save"
+        row.operator("wm.recover_auto_save", text=text, icon_value=get_icon('recover_auto_save'))
+
         # col.operator("wm.recover_last_session", text="Recover Last Session", icon='RECOVER_LAST')
         column.operator("wm.revert_mainfile", text="Revert", icon_value=get_icon('revert'))
 
