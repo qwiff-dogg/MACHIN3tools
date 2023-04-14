@@ -16,7 +16,7 @@ class OpenLibraryBlend(bpy.types.Operator):
         blenderbinpath = bpy.app.binary_path
 
         cmd = [blenderbinpath, self.blendpath]
-        blender = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        blender = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         # it it loeaded successfullly reload the library to update any changes that were done
         if blender and self.library:
