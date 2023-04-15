@@ -6,6 +6,7 @@ from . utils.registration import get_prefs, reload_msgbus, get_addon
 from . utils.group import update_group_name, select_group_children
 from . utils.light import adjust_lights_for_rendering, get_area_light_poll
 from . utils.view import sync_light_visibility
+from . utils.system import get_temp_dir
 
 import time
 
@@ -306,13 +307,7 @@ def undo_save(scene):
                     first_redo = True
 
             if C.active_operator is None or first_redo:
-                # check if a custom temp dir is set
-                temp_dir = bprefs.filepaths.temporary_directory
-                
-                # if not fetch the system's temp dir
-                if not temp_dir:
-                    from tempfile import gettempdir
-                    temp_dir = gettempdir()
+                temp_dir = get_temp_dir(bpy.context)
 
                 if temp_dir:
                     if debug:

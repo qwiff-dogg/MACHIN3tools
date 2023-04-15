@@ -1,11 +1,11 @@
 import bpy
-from bpy.props import BoolProperty
+from bpy.props import BoolProperty, StringProperty
 import os
 import time
 import subprocess
 import shutil
 from ... utils.registration import get_addon, get_prefs
-from ... utils.system import add_path_to_recent_files, get_incremented_paths, get_next_files
+from ... utils.system import add_path_to_recent_files, get_incremented_paths, get_next_files, get_temp_dir
 from ... utils.ui import popup_message, get_icon
 from ... colors import green
 
@@ -364,6 +364,36 @@ class LoadNext(bpy.types.Operator):
         else:
             popup_message([f"You have reached the end of blend files in '{folder}'", "There are still some backup files though, which you can load via CTRL"], title="End of folder reached")
 
+        return {'CANCELLED'}
+
+
+class OpenTemp(bpy.types.Operator):
+    bl_idname = "machin3.open_temp_dir"
+    bl_label = "Open"
+    bl_description = "Open System's Temp Folder, which is used to Save Files on Quit, Auto Saves and Undo Saves"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    directory: StringProperty(subtype='DIR_PATH', options={'HIDDEN', 'SKIP_SAVE'})
+    # filename: StringProperty(options={'HIDDEN'})
+    filepath: StringProperty(subtype='FILE_PATH', options={'HIDDEN', 'SKIP_SAVE'})
+
+    filter_blender: BoolProperty(default=True, options={'HIDDEN', 'SKIP_SAVE'})
+    filter_backup: BoolProperty(default=True, options={'HIDDEN', 'SKIP_SAVE'})
+
+    load_ui: BoolProperty(name="Load UI", default=True)
+
+    def execute(self, context):
+        bpy.ops.wm.open_mainfile(filepath=self.filepath, load_ui=self.load_ui)
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        self.directory = get_temp_dir(context)
+
+        if self.directory:
+
+            # Opens a file selector with an operator. The string properties ‘filepath’, ‘filename’, ‘directory’ and a ‘files’ collection are assigned when present in the operator
+            context.window_manager.fileselect_add(self)
+            return {'RUNNING_MODAL'}
         return {'CANCELLED'}
 
 

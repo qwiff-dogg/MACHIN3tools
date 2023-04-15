@@ -5,7 +5,7 @@ import importlib
 from .. utils.registration import get_prefs, get_addon
 from .. utils.ui import get_icon
 from .. utils.collection import get_scene_collections
-from .. utils.system import abspath
+from .. utils.system import abspath, get_temp_dir
 from .. utils.tools import get_tools_from_context, get_active_tool
 from .. utils.light import get_area_light_poll
 
@@ -729,6 +729,9 @@ class PieSave(Menu):
         scene = context.scene
         wm = context.window_manager
 
+        # check if current file is in temp dir
+        is_in_temp_dir = bpy.data.filepath and get_temp_dir(context) == os.path.dirname(bpy.data.filepath)
+
         # 4 - LEFT
         pie.operator("wm.open_mainfile", text="Open...", icon_value=get_icon('open'))
 
@@ -752,7 +755,7 @@ class PieSave(Menu):
 
         if bpy.data.filepath:
             b = column.box()
-            self.draw_center_column_bottom(b)
+            self.draw_center_column_bottom(b, is_in_temp_dir=is_in_temp_dir)
 
         b = box.box()
         self.draw_right_column(b)
@@ -789,12 +792,9 @@ class PieSave(Menu):
             r.active = scene.M3.use_undo_save
             r.prop(scene.M3, "use_redo_save", text="Redo Save", icon='FILE_REFRESH')
 
-        is_undo_save = get_prefs().save_pie_use_undo_save and scene.M3.use_undo_save
-
         row = column.row(align=True)
         row.scale_y = 1.2
-        text = "Recover Auto- or Undo-Save" if is_undo_save else "Recover Auto-Save"
-        row.operator("wm.recover_auto_save", text=text, icon_value=get_icon('recover_auto_save'))
+        row.operator("machin3.open_temp_dir", text="Open Temp Dir", icon_value=get_icon('recover_auto_save'))
 
         # col.operator("wm.recover_last_session", text="Recover Last Session", icon='RECOVER_LAST')
         column.operator("wm.revert_mainfile", text="Revert", icon_value=get_icon('revert'))
@@ -886,13 +886,18 @@ class PieSave(Menu):
             op = r.operator("wm.usd_export", text="Export", icon_value=get_icon('export'))
             op.selected_objects_only = True if context.selected_objects else False
 
-    def draw_center_column_bottom(self, layout):
+    def draw_center_column_bottom(self, layout, is_in_temp_dir=False):
         column = layout.column(align=True)
 
         row = column.split(factor=0.5, align=True)
         row.scale_y = 1.2
         row.operator("machin3.load_previous", text="Previous", icon_value=get_icon('open_previous'))
         row.operator("machin3.load_next", text="Next", icon_value=get_icon('open_next'))
+
+        if is_in_temp_dir:
+            column = layout.column(align=True)
+            column.label(text="You are currently in the Temp Folder", icon_value=get_icon('warning'))
+            column.label(text="If you want to save, do it elsewhere!", icon='BLANK1')
 
     def draw_right_column(self, layout):
         column = layout.column(align=True)

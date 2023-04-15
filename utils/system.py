@@ -3,6 +3,7 @@ import os
 import sys
 import re
 from pprint import pprint
+from tempfile import gettempdir
 
 
 enc = sys.getfilesystemencoding()
@@ -96,6 +97,18 @@ def get_next_files(filepath, next=True, debug=False):
         print(f"{nextstr} file (incl. backups):", next_backup_file)
 
     return current_dir, next_file, next_backup_file
+
+
+def get_temp_dir(context):
+
+    # check if a custom temp dir is set
+    temp_dir = context.preferences.filepaths.temporary_directory
+    
+    # if not fetch the system's temp dir
+    if not temp_dir:
+        temp_dir = gettempdir()
+
+    return temp_dir
 
 
 def open_folder(path):

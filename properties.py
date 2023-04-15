@@ -47,7 +47,7 @@ class M3SceneProperties(bpy.types.PropertyGroup):
     # SAVE Pie
 
     use_undo_save: BoolProperty(name="Use Undo Save", description="Save before Undoing\nBe warned, depending on your scene complexity, this can noticably affect your undo speed", default=False)
-    use_redo_save: BoolProperty(name="Use Redo Save", description="Save before first Operator Redos", default=False)
+    use_redo_save: BoolProperty(name="Use Redo Save", description="Also save before first Operator Redos", default=False)
 
 
     # MODES Pie
