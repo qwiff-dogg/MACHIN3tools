@@ -5,7 +5,7 @@ import time
 import subprocess
 import shutil
 from ... utils.registration import get_addon, get_prefs
-from ... utils.system import add_path_to_recent_files, get_incremented_paths
+from ... utils.system import add_path_to_recent_files, get_incremented_paths, get_next_files
 from ... utils.ui import popup_message, get_icon
 from ... colors import green
 
@@ -243,120 +243,133 @@ class LoadMostRecent(bpy.types.Operator):
 
 class LoadPrevious(bpy.types.Operator):
     bl_idname = "machin3.load_previous"
-    bl_label = "Current file is unsaved. Load previous blend in folder anyway?"
-    bl_description = "Load Previous Blend File in Current Folder\nALT: Don't load ui"
+    bl_label = "MACHIN3: Load previous file"
     bl_options = {'REGISTER'}
 
     load_ui: BoolProperty()
+    include_backups: BoolProperty()
 
     @classmethod
     def poll(cls, context):
-        return bpy.data.filepath
+        if bpy.data.filepath:
+            _, prev_file, prev_backup_file = get_next_files(bpy.data.filepath, next=False, debug=False)
+            return prev_file or prev_backup_file
+
+    @classmethod
+    def description(cls, context, properties):
+        folder, prev_file, prev_backup_file = get_next_files(bpy.data.filepath, next=False, debug=False)
+
+        if not prev_file and not prev_backup_file:
+            desc = "Your are at the beginning of the folder. There are no previous files to load."
+
+        else:
+            desc = f"Load Previous .blend File in Current Folder: {prev_file}"
+
+            if prev_backup_file and prev_backup_file != prev_file:
+                desc += f"\nCTRL: including Backups: {prev_backup_file}"
+
+            desc += "\n\nALT: Keep current UI"
+        return desc
 
     def invoke(self, context, event):
         self.load_ui = not event.alt
-
-        if bpy.data.filepath:
-            path, _, idx = self.get_data(bpy.data.filepath)
-
-            if idx >= 0:
-                if bpy.data.is_dirty:
-                    return context.window_manager.invoke_confirm(self, event)
-
-                else:
-                    self.execute(context)
-
-            else:
-                popup_message("You've reached the first file in the current foler: %s." % (path), title="Info")
-
-        return {'FINISHED'}
+        self.include_backups = event.ctrl
+        return self.execute(context)
 
     def execute(self, context):
-        path, files, idx = self.get_data(bpy.data.filepath)
+        # print()
+        # print("load UI:", self.load_ui)
+        # print("include backups:", self.include_backups)
 
-        loadpath = os.path.join(path, files[idx])
+        folder, prev_file, prev_backup_file = get_next_files(bpy.data.filepath, next=False, debug=False)
 
-        # add the path to the recent files list, for some reason it's not done automatically
-        add_path_to_recent_files(loadpath)
+        is_backup = self.include_backups and prev_backup_file
+        file = prev_backup_file if is_backup else prev_file if prev_file else None
 
-        bpy.ops.wm.open_mainfile(filepath=loadpath, load_ui=self.load_ui)
-        self.report({'INFO'}, 'Loaded previous file "%s" (%d/%d)' % (os.path.basename(loadpath), idx + 1, len(files)))
+        if file:
+            filepath = os.path.join(folder, file)
+            # print("loading:", filepath)
 
-        return {'FINISHED'}
+            # add the path to the recent files list, for some reason it's not done automatically
+            add_path_to_recent_files(filepath)
 
-    def get_data(self, filepath):
-        """
-        return path of current blend, all blend files in the folder or the current file as well as the index of the previous blend
-        """
-        currentpath = os.path.dirname(filepath)
-        currentblend = os.path.basename(filepath)
+            bpy.ops.wm.open_mainfile(filepath=filepath, load_ui=self.load_ui)
+            self.report({'INFO'}, f"Loaded previous {'BACKUP ' if is_backup else ''}file '{file}'")
+            return {'FINISHED'}
 
-        blendfiles = [f for f in sorted(os.listdir(currentpath)) if f.endswith(".blend")]
-        index = blendfiles.index(currentblend)
-        previousidx = index - 1
+        # NOTE: unlike LoadNext(), if you are at the beginning, then you truely are at the beginning, there won't be any previous backup files
 
-        return currentpath, blendfiles, previousidx
+        return {'CANCELLED'}
 
 
 class LoadNext(bpy.types.Operator):
     bl_idname = "machin3.load_next"
-    bl_label = "Current file is unsaved. Load next blend in folder anyway?"
-    bl_description = "Load Next Blend File in Current Folder\nALT: Don't load ui"
+    bl_label = "MACHIN3: Load next file"
     bl_options = {'REGISTER'}
 
     load_ui: BoolProperty()
+    include_backups: BoolProperty()
 
     @classmethod
     def poll(cls, context):
-        return bpy.data.filepath
+        if bpy.data.filepath:
+            _, next_file, next_backup_file = get_next_files(bpy.data.filepath, next=True, debug=False)
+            return next_file or next_backup_file
+
+    @classmethod
+    def description(cls, context, properties):
+        folder, next_file, next_backup_file = get_next_files(bpy.data.filepath, next=True, debug=False)
+
+        if not next_file and not next_backup_file:
+            desc = "You have reached the end of the folder. There are no next files to load."
+
+        else:
+            desc = f"Load Next .blend File in Current Folder: {next_file}"
+
+            if next_backup_file and next_backup_file != next_file:
+                desc += f"\nCTRL: including Backups: {next_backup_file}"
+
+            desc += "\n\nALT: Keep current UI"
+        return desc
 
     def invoke(self, context, event):
         self.load_ui = not event.alt
-
-        if bpy.data.filepath:
-            path, files, idx = self.get_data(bpy.data.filepath)
-
-            if idx < len(files):
-                if bpy.data.is_dirty:
-                    return context.window_manager.invoke_confirm(self, event)
-
-                else:
-                    self.execute(context)
-            else:
-                popup_message("You've reached the last file in the current foler: %s." % (path), title="Info")
-
-        return {'FINISHED'}
+        self.include_backups = event.ctrl
+        return self.execute(context)
 
     def execute(self, context):
-        path, files, idx = self.get_data(bpy.data.filepath)
+        # print()
+        # print("load UI:", self.load_ui)
+        # print("include backups:", self.include_backups)
 
-        loadpath = os.path.join(path, files[idx])
+        folder, next_file, next_backup_file = get_next_files(bpy.data.filepath, next=True, debug=False)
 
-        # add the path to the recent files list, for some reason it's not done automatically
-        add_path_to_recent_files(loadpath)
+        is_backup = self.include_backups and next_backup_file
+        file = next_backup_file if is_backup else next_file if next_file else None
 
-        bpy.ops.wm.open_mainfile(filepath=loadpath, load_ui=self.load_ui)
-        self.report({'INFO'}, 'Loaded next file "%s" (%d/%d)' % (os.path.basename(loadpath), idx + 1, len(files)))
+        if file:
+            filepath = os.path.join(folder, file)
+            # print("loading:", filepath)
 
-        return {'FINISHED'}
+            # add the path to the recent files list, for some reason it's not done automatically
+            add_path_to_recent_files(filepath)
 
-    def get_data(self, filepath):
-        """
-        return path of current blend, all blend files in the folder or the current file as well as the index of the next file
-        """
-        currentpath = os.path.dirname(filepath)
-        currentblend = os.path.basename(filepath)
+            bpy.ops.wm.open_mainfile(filepath=filepath, load_ui=self.load_ui)
 
-        blendfiles = [f for f in sorted(os.listdir(currentpath)) if f.endswith(".blend")]
-        index = blendfiles.index(currentblend)
-        previousidx = index + 1
+            self.report({'INFO'}, f"Loaded next {'BACKUP ' if is_backup else ''}file '{file}'")
+            return {'FINISHED'}
 
-        return currentpath, blendfiles, previousidx
+        # if both files are None, then the poll will prevent execution of the op
+        # so the only case where the filepath is None is if you have reched the end of main .blend files, but backups are still available
+        else:
+            popup_message([f"You have reached the end of blend files in '{folder}'", "There are still some backup files though, which you can load via CTRL"], title="End of folder reached")
+
+        return {'CANCELLED'}
 
 
 decalmachine = None
 
-class Purge(bpy.types.Operator):
+class Purge(bpy.types.Operator):  
     bl_idname = "machin3.purge_orphans"
     bl_label = "MACHIN3: Purge Orphans"
     bl_options = {'REGISTER', 'UNDO'}

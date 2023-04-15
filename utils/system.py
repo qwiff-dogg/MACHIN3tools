@@ -34,6 +34,70 @@ def add_path_to_recent_files(path):
         pass
 
 
+def get_next_files(filepath, next=True, debug=False):
+    '''
+    return path of current blend, all blend files in the folder or the current file as well as the index of the next file
+    '''
+
+    current_dir = os.path.dirname(filepath)
+    current_file = os.path.basename(filepath)
+
+    # always get all blend files, including backups
+    blend_files = sorted([f for f in os.listdir(current_dir) if os.path.splitext(f)[1].startswith('.blend')])
+
+    current_idx = blend_files.index(current_file)
+
+    if debug:
+        print()
+        print("files:")
+
+        for idx, file in enumerate(blend_files):
+            if idx == current_idx:
+                print(" >", file)
+            else:
+                print("  ", file)
+
+
+
+    next_file = None
+    next_backup_file = None
+
+    if next:
+        next_blend_files = blend_files[current_idx + 1:]
+
+    else:
+        next_blend_files = blend_files[:current_idx]
+        next_blend_files.reverse()
+
+    if debug:
+        print()
+        nextstr = 'next' if next else 'previous'
+        print(f"{nextstr} files:")
+
+    for file in next_blend_files:
+        if debug:
+            print(" ", file)
+
+        ext = os.path.splitext(file)[1]
+
+        if next_file is None and ext== '.blend':
+            next_file = file
+
+        if next_backup_file is None and ext.startswith('.blend'):
+            next_backup_file = file
+
+        # no need to further iterate
+        if next_file and next_backup_file:
+            break
+
+    if debug:
+        print()
+        print(f"{nextstr} file:", next_file)
+        print(f"{nextstr} file (incl. backups):", next_backup_file)
+
+    return current_dir, next_file, next_backup_file
+
+
 def open_folder(path):
     import platform
     import subprocess
