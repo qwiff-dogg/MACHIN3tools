@@ -282,7 +282,7 @@ last_active_operator = None
 @persistent
 def undo_save(scene):
     debug = False
-    # debug = True
+    debug = True
 
     if get_prefs().save_pie_use_undo_save:
         m3 = scene.M3
@@ -331,11 +331,11 @@ def undo_save(scene):
 
                     if filepath:
                         filename = os.path.basename(filepath)
-                        
                     else:
                         filename = "startup.blend"
 
-                    filepath = os.path.join(temp_dir, filename)
+                    name, ext = os.path.splitext(filename)
+                    filepath = os.path.join(temp_dir, name + '_undosave' + ext)
 
                     if debug: 
                         print(" to temp folder:", filepath)
@@ -344,7 +344,7 @@ def undo_save(scene):
                         from time import time
                         start = time()
 
-                    self = bpy.ops.wm.save_as_mainfile(filepath=filepath, check_existing=True, copy=True, compress=True)
+                    bpy.ops.wm.save_as_mainfile(filepath=filepath, check_existing=True, copy=True, compress=True)
 
                     if debug:
                         print("time:", time() - start)
