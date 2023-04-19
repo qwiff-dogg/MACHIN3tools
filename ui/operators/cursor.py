@@ -137,7 +137,7 @@ class CursorToSelected(bpy.types.Operator):
             loc = mx @ center
 
             e = bm.select_history[-1] if bm.select_history else edges[0]
-            rot = create_rotation_matrix_from_edge(context, active, e)
+            rot = create_rotation_matrix_from_edge(context, mx, e)
 
         elif tuple(bpy.context.scene.tool_settings.mesh_select_mode) == (False, False, True):
             faces = [f for f in bm.faces if f.select]
