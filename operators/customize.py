@@ -500,7 +500,7 @@ class Customize(bpy.types.Operator):
                     kmi.value = "DOUBLE_CLICK"
                     kmi.ctrl = False
                     kmi.shift = True
-                    kmi.properties.delimit = {'SHARP'}
+                    kmi.properties.delimit = {'MATERIAL', 'SEAM', 'SHARP'}
                     print(to_str, kmi_to_string(kmi, docs_mode=docs_mode))
 
                 if kmi.idname == "mesh.select_linked_pick":
@@ -509,7 +509,7 @@ class Customize(bpy.types.Operator):
                         kmi.type = "LEFTMOUSE"
                         kmi.value = "DOUBLE_CLICK"
                         kmi.alt = True
-                        kmi.properties.delimit = {'SHARP'}
+                        kmi.properties.delimit = {'MATERIAL', 'SEAM', 'SHARP'}
                         print(to_str, kmi_to_string(kmi, docs_mode=docs_mode))
 
                     else:
@@ -1172,7 +1172,7 @@ class Customize(bpy.types.Operator):
                     kmi.value = "DOUBLE_CLICK"
                     kmi.ctrl = False
                     kmi.shift = True
-                    kmi.properties.delimit = {'SHARP'}
+                    kmi.properties.delimit = {'MATERIAL', 'SEAM', 'SHARP'}
                     print(to_str, kmi_to_string(kmi, docs_mode=docs_mode))
 
                 if kmi.idname == "mesh.select_linked_pick":
@@ -1181,7 +1181,7 @@ class Customize(bpy.types.Operator):
                         kmi.type = "LEFTMOUSE"
                         kmi.value = "DOUBLE_CLICK"
                         kmi.alt = True
-                        kmi.properties.delimit = {'SHARP'}
+                        kmi.properties.delimit = {'MATERIAL', 'SEAM', 'SHARP'}
                         print(to_str, kmi_to_string(kmi, docs_mode=docs_mode))
 
                     else:
