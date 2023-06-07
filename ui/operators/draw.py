@@ -3,6 +3,7 @@ from bpy.props import FloatProperty, StringProperty, FloatVectorProperty, BoolPr
 from mathutils import Vector
 from ... utils.draw import draw_label
 from ... utils.registration import get_prefs
+from ... utils.ui import init_timer_modal, set_countdown, get_timer_progress
 
 
 class DrawLabel(bpy.types.Operator):
@@ -24,9 +25,8 @@ class DrawLabel(bpy.types.Operator):
         return context.space_data.type == 'VIEW_3D'
 
     def draw_HUD(self, context):
-        alpha = self.countdown / self.time * self.alpha
+        alpha = get_timer_progress(self) * self.alpha
         draw_label(context, title=self.text, coords=self.coords, center=self.center, color=self.color, alpha=alpha)
-
 
     def modal(self, context, event):
         context.area.tag_redraw()
@@ -34,34 +34,32 @@ class DrawLabel(bpy.types.Operator):
         # FINISH when countdown is 0
 
         if self.countdown < 0:
-            # print("Countdown of %d seconds finished" % (self.time))
-
-            # remove time handler
-            context.window_manager.event_timer_remove(self.TIMER)
-
-            # remove draw handler
-            bpy.types.SpaceView3D.draw_handler_remove(self.HUD, 'WINDOW')
+            self.finish(context)
             return {'FINISHED'}
+
 
         # COUNT DOWN
 
         if event.type == 'TIMER':
-            self.countdown -= 0.1
+            set_countdown(self)
 
         return {'PASS_THROUGH'}
 
-    def execute(self, context):
-        self.HUD = bpy.types.SpaceView3D.draw_handler_add(self.draw_HUD, (context, ), 'WINDOW', 'POST_PIXEL')
+    def finish(self, context):
+        context.window_manager.event_timer_remove(self.TIMER)
+        bpy.types.SpaceView3D.draw_handler_remove(self.HUD, 'WINDOW')
 
-        # time handler
-        self.TIMER = context.window_manager.event_timer_add(0.1, window=context.window)
+    def execute(self, context):
 
         # initalize time from prefs
-        self.countdown = self.time
+        init_timer_modal(self)
+
+        # handlers
+        self.HUD = bpy.types.SpaceView3D.draw_handler_add(self.draw_HUD, (context, ), 'WINDOW', 'POST_PIXEL')
+        self.TIMER = context.window_manager.event_timer_add(0.1, window=context.window)
 
         context.window_manager.modal_handler_add(self)
         return {'RUNNING_MODAL'}
-
 
 
 class DrawLabels(bpy.types.Operator):
@@ -87,7 +85,7 @@ class DrawLabels(bpy.types.Operator):
         return context.space_data.type == 'VIEW_3D'
 
     def draw_HUD(self, context):
-        alpha = self.countdown / self.time * self.alpha
+        alpha = get_timer_progress(self) * self.alpha
         scale = context.preferences.view.ui_scale * get_prefs().HUD_scale
 
         draw_label(context, title=self.text, coords=self.coords, center=self.center, color=self.color, alpha=alpha)
@@ -95,37 +93,35 @@ class DrawLabels(bpy.types.Operator):
         if self.text2:
             draw_label(context, title=self.text2, coords=Vector(self.coords) + Vector((0, scale * -15)), center=self.center, color=self.color2, alpha=alpha * 2)
 
-
     def modal(self, context, event):
         context.area.tag_redraw()
 
         # FINISH when countdown is 0
 
         if self.countdown < 0:
-            # print("Countdown of %d seconds finished" % (self.time))
-
-            # remove time handler
-            context.window_manager.event_timer_remove(self.TIMER)
-
-            # remove draw handler
-            bpy.types.SpaceView3D.draw_handler_remove(self.HUD, 'WINDOW')
+            self.finish(context)
             return {'FINISHED'}
+
 
         # COUNT DOWN
 
         if event.type == 'TIMER':
-            self.countdown -= 0.1
+            set_countdown(self)
 
         return {'PASS_THROUGH'}
 
+    def finish(self, context):
+        context.window_manager.event_timer_remove(self.TIMER)
+        bpy.types.SpaceView3D.draw_handler_remove(self.HUD, 'WINDOW')
+
     def execute(self, context):
+
+        # initialize timer modal
+        init_timer_modal(self)
+
+        # handlers
         self.HUD = bpy.types.SpaceView3D.draw_handler_add(self.draw_HUD, (context, ), 'WINDOW', 'POST_PIXEL')
-
-        # time handler
         self.TIMER = context.window_manager.event_timer_add(0.1, window=context.window)
-
-        # initalize time from prefs
-        self.countdown = self.time
 
         context.window_manager.modal_handler_add(self)
         return {'RUNNING_MODAL'}

@@ -1205,6 +1205,8 @@ class Customize(bpy.types.Operator):
 
             # CURVE
 
+            # TODO: disable F keymap, as it prevents view_selected
+
             """
             # not longer necessary as of 2.83, maybe earlier?
             km = kc.keymaps.get("Curve")

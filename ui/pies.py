@@ -78,6 +78,7 @@ class PieModes(Menu):
                             # 7 - TOP - LEFT
                             self.draw_mesh_modes(context, pie)
 
+
                             # 9 - TOP - RIGHT
                             if context.mode == 'EDIT_MESH' and hypercursor:
                                 box = pie.split()

@@ -3,6 +3,8 @@ import rna_keymap_ui
 from mathutils import Vector
 from bpy_extras.view3d_utils import region_2d_to_location_3d, location_3d_to_region_2d
 from bl_ui.space_statusbar import STATUSBAR_HT_header as statusbar
+from . registration import get_prefs
+from time import time
 
 
 icons = None
@@ -305,3 +307,42 @@ def draw_basic_status(self, context, title):
 
 def finish_status(self):
     statusbar.draw = self.bar_orig
+
+
+# MODAL
+
+def init_timer_modal(self, debug=False):
+
+    # set start value from current system time
+    self.start = time()
+
+    # init countdown from operators time prop, and factor in any user based timeout modulation
+    self.countdown = self.time * get_prefs().modal_hud_timeout
+
+    if debug:
+        print(f"initiating timer with a countdown of {self.time}s ({self.time * get_prefs().modal_hud_timeout}s)")
+
+
+def set_countdown(self, debug=False):
+    '''
+    set the operators countdown prop, based on the time passed since init_timer_modal() was called
+    '''
+    
+    self.countdown = self.time * get_prefs().modal_hud_timeout - (time() - self.start)
+
+    if debug:
+        print("countdown:", self.countdown)
+
+
+def get_timer_progress(self, debug=False):
+    '''
+    get timer progress, expressed on a range of 0-1
+    '''
+
+    progress =  self.countdown / (self.time * get_prefs().modal_hud_timeout)
+
+    if debug:
+        print("progress:", progress)
+
+    return progress
+
