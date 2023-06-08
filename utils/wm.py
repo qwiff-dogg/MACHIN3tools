@@ -8,6 +8,7 @@ addons = None
 addon_abbr_mapping = {'MACHIN3tools': 'M3',
                       'DECALmachine': 'DM',
                       'MESHmachine': 'MM',
+                      'CURVEmachine': 'CM',
                       'HyperCursor': 'HC',
                       'PUNCHit': 'PI'}
 
@@ -29,7 +30,7 @@ def get_last_operators(context, debug=False):
     if addons is None:
         addons = {}
 
-        for addon in ['MACHIN3tools', 'DECALmachine', 'MESHmachine', 'HyperCursor', 'PUNCHit']:
+        for addon in ['MACHIN3tools', 'DECALmachine', 'MESHmachine', 'CURVEmachine', 'HyperCursor', 'PUNCHit']:
             addons[addon] = get_addon_operator_idnames(addon)
 
         if debug:
