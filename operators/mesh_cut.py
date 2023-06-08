@@ -73,7 +73,6 @@ class MeshCut(bpy.types.Operator):
             bm.verts.ensure_lookup_table()
 
             select_layer = bm.faces.layers.int.get('Machin3FaceSelect')
-
             meshcut_layer = bm.edges.layers.int.get('Machin3EdgeMeshCut')
 
             if not meshcut_layer:
