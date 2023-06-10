@@ -16,9 +16,6 @@ has_sidebar = ['OT_smart_drive',
                'OT_create_assembly_asset',
                'OT_prepare_unity_export']
 
-draws_lines = ['OT_smart_vert',
-               'OT_punch_it']
-
 has_hud = ['OT_material_picker',
            'OT_surface_slide',
            'OT_clean_up',
@@ -34,27 +31,27 @@ is_fading = ['OT_clean_up',
              'OT_group',
              'MT_tools_pie']
 
-has_settings = has_sidebar + draws_lines + has_hud + ['OT_smart_vert',
-                                                      'OT_clean_up',
-                                                      'OT_punch_it',
-                                                      'OT_transform_edge_constrained',
-                                                      'OT_focus',
-                                                      'OT_group',
-                                                      'OT_render',
-                                                      'OT_create_assembly_asset',
-                                                      'OT_clipping_toggle',
-                                                      'OT_surface_slide',
-                                                      'OT_material_picker',
-                                                      'OT_clipping_toggle',
-                                                      'OT_customize',
-
-                                                      'MT_modes_pie',
-                                                      'MT_save_pie',
-                                                      'MT_shading_pie',
-                                                      'MT_cursor_pie',
-                                                      'MT_snapping_pie',
-                                                      'MT_viewport_pie',
-                                                      'MT_tools_pie']
+has_settings = has_sidebar + has_hud + ['OT_smart_vert',
+                                        'OT_clean_up',
+                                        'OT_punch_it',
+                                        'OT_transform_edge_constrained',
+                                        'OT_focus',
+                                        'OT_group',
+                                        'OT_render',
+                                        'OT_create_assembly_asset',
+                                        'OT_clipping_toggle',
+                                        'OT_surface_slide',
+                                        'OT_material_picker',
+                                        'OT_clipping_toggle',
+                                        'OT_customize',
+                                 
+                                        'MT_modes_pie',
+                                        'MT_save_pie',
+                                        'MT_shading_pie',
+                                        'MT_cursor_pie',
+                                        'MT_snapping_pie',
+                                        'MT_viewport_pie',
+                                        'MT_tools_pie']
 
 
 has_skribe = None
@@ -477,7 +474,6 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     # VIEW3D
 
     show_sidebar_panel: BoolProperty(name="Show Sidebar Panel", description="Show MACHIN3tools Panel in 3D View's Sidebar", default=True)
-    use_legacy_line_smoothing: BoolProperty(name="Use Legacy Line Smoothing", description="Legacy Line Smoothing using the depreciated bgl module\nIf this is disabled, lines drawn by MACHIN3tools won't be anti aliased.", default=False)
 
 
     # HUD
@@ -705,17 +701,15 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
 
         # VIEW 3D settings
 
-        if any([getattr(bpy.types, f'MACHIN3_{name}', False) for name in has_sidebar + draws_lines]):
+        if any([getattr(bpy.types, f'MACHIN3_{name}', False) for name in has_sidebar]):
             bb = b.box()
             bb.label(text="View 3D")
 
             if any([getattr(bpy.types, f'MACHIN3_{name}', False) for name in has_sidebar]):
                 column = bb.column()
-                column.prop(self, "show_sidebar_panel")
-
-            if any([getattr(bpy.types, f'MACHIN3_{name}', False) for name in draws_lines]):
-                column = bb.column()
-                column.prop(self, "use_legacy_line_smoothing")
+                row = column.split(factor=0.2, align=True)
+                row.prop(self, "show_sidebar_panel", text=str(self.show_sidebar_panel), toggle=True)
+                row.label(text="Show Sidebar Panel.")
 
 
         if any([getattr(bpy.types, f'MACHIN3_{name}', False) for name in has_hud]):
