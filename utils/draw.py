@@ -1,5 +1,6 @@
 import bpy
-from mathutils import Vector, Matrix
+from mathutils import Vector, Matrix, Quaternion
+from math import sin, cos, pi
 import gpu
 from gpu_extras.batch import batch_for_shader
 from gpu_extras.presets import draw_circle_2d
@@ -9,347 +10,6 @@ from . registration import get_prefs, get_addon
 from . ui import require_header_offset, get_zoom_factor
 from . tools import get_active_tool
 from .. colors import red, green, blue, black, white
-
-
-hypercursor = None
-
-def draw_axes_HUD(context, objects):
-    global hypercursor
-    
-    if not hypercursor:
-        hypercursor = get_addon('HyperCursor')[0]
-
-
-    if context.space_data.overlay.show_overlays:
-        m3 = context.scene.M3
-
-        size = m3.draw_axes_size
-        alpha = m3.draw_axes_alpha - 0.001
-        screenspace = m3.draw_axes_screenspace
-        ui_scale = context.preferences.view.ui_scale
-
-        show_cursor = context.space_data.overlay.show_cursor
-        show_hyper_cursor = hypercursor and get_active_tool(context).idname in ['machin3.tool_hyper_cursor', 'machin3.tool_hyper_cursor_simple'] and context.scene.HC.show_gizmos
-
-        axes = [(Vector((1, 0, 0)), red), (Vector((0, 1, 0)), green), (Vector((0, 0, 1)), blue)]
-
-        for axis, color in axes:
-            coords = []
-
-            # draw object(s)
-            for obj in objects:
-
-                # CURSOR
-
-                if obj == 'CURSOR':
-
-                    # only show the cursor axes when the hyper cursor gizmo isn't shown
-                    if not show_hyper_cursor:
-                        mx = context.scene.cursor.matrix
-                        origin = mx.decompose()[0]
-
-                        factor = get_zoom_factor(context, origin, scale=300, ignore_obj_scale=True) if screenspace else 1
-
-                        if show_cursor and screenspace:
-                            coords.append(origin + (mx.to_3x3() @ axis).normalized() * 0.1 * ui_scale * factor * 0.8)
-                            coords.append(origin + (mx.to_3x3() @ axis).normalized() * 0.1 * ui_scale * factor * 1.2)
-
-                        else:
-                            coords.append(origin + (mx.to_3x3() @ axis).normalized() * size * ui_scale * factor * 0.9)
-                            coords.append(origin + (mx.to_3x3() @ axis).normalized() * size * ui_scale * factor)
-
-                            coords.append(origin + (mx.to_3x3() @ axis).normalized() * size * ui_scale * factor * 0.1)
-                            coords.append(origin + (mx.to_3x3() @ axis).normalized() * size * ui_scale * factor * 0.7)
-
-                # OBJECT
-
-                elif str(obj) != '<bpy_struct, Object invalid>':
-                    mx = obj.matrix_world
-                    origin = mx.decompose()[0]
-
-                    factor = get_zoom_factor(context, origin, scale=300, ignore_obj_scale=True) if screenspace else 1
-
-                    coords.append(origin + (mx.to_3x3() @ axis).normalized() * size * ui_scale * factor * 0.1)
-                    coords.append(origin + (mx.to_3x3() @ axis).normalized() * size * ui_scale * factor)
-
-                    """
-                    # debuging stash + stashtargtmx for object origin changes
-                    for stash in obj.MM.stashes:
-                        if s tash.obj:
-                            smx = sta sh.obj.MM.stashmx
-                            sorigin = smx.decompose()[0]
-
-                            coords.append(sorigin + smx.to_3x3() @ axis * size * 0.1)
-                            coords.append(sorigin + smx.to_3x3() @ axis * size)
-
-
-                            stmx = stash.obj.MM.stashtargetmx
-                            storigin = stmx.decompose()[0]
-
-                            coords.append(storigin + stmx.to_3x3() @ axis * size * 0.1)
-                            coords.append(storigin + stmx.to_3x3() @ axis * size)
-                    """
-
-            if coords:
-                indices = [(i, i + 1) for i in range(0, len(coords), 2)]
-
-                gpu.state.depth_test_set('NONE')
-                gpu.state.blend_set('ALPHA')
-
-                shader = gpu.shader.from_builtin('POLYLINE_UNIFORM_COLOR')
-                shader.uniform_float("color", (*color, alpha))
-                shader.uniform_float("lineWidth", 2)
-                shader.uniform_float("viewportSize", gpu.state.scissor_get()[2:])
-                shader.bind()
-
-                batch = batch_for_shader(shader, 'LINES', {"pos": coords}, indices=indices)
-                batch.draw(shader)
-
-
-def draw_focus_HUD(context, color=(1, 1, 1), alpha=1, width=2):
-    if context.space_data.overlay.show_overlays:
-        region = context.region
-        view = context.space_data
-
-        # only draw when actually in local view, this prevents it being drawn when switing workspace, which doesn't sync local view
-        if view.local_view:
-
-            # draw border
-
-            coords = [(width, width), (region.width - width, width), (region.width - width, region.height - width), (width, region.height - width)]
-            indices =[(0, 1), (1, 2), (2, 3), (3, 0)]
-
-            shader = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
-            shader.bind()
-            shader.uniform_float("color", (*color, alpha / 4))
-
-            gpu.state.depth_test_set('NONE')
-            gpu.state.blend_set('ALPHA' if (alpha / 4) < 1 else 'NONE')
-            gpu.state.line_width_set(width)
-
-            batch = batch_for_shader(shader, 'LINES', {"pos": coords}, indices=indices)
-            batch.draw(shader)
-
-            # draw title
-
-            scale = context.preferences.view.ui_scale * get_prefs().HUD_scale
-            offset = 4
-
-            # add additional offset if necessary
-            if require_header_offset(context, top=True):
-                offset += int(25)
-
-            title = "Focus Level: %d" % len(context.scene.M3.focus_history)
-
-            stashes = True if context.active_object and getattr(context.active_object, 'MM', False) and getattr(context.active_object.MM, 'stashes') else False
-            center = (region.width / 2) + (scale * 100) if stashes else region.width / 2
-
-            font = 1
-            fontsize = int(12 * scale)
-
-            blf.size(font, fontsize, 72)
-            blf.color(font, *color, alpha)
-            blf.position(font, center - int(60 * scale), region.height - offset - int(fontsize), 0)
-
-            blf.draw(font, title)
-
-
-def draw_surface_slide_HUD(context, color=(1, 1, 1), alpha=1, width=2):
-    if context.space_data.overlay.show_overlays:
-        region = context.region
-
-        scale = context.preferences.view.ui_scale * get_prefs().HUD_scale
-        offset = 0
-
-        if require_header_offset(context, top=False):
-            offset += int(20)
-
-        title = "Surface Sliding"
-
-        font = 1
-        fontsize = int(12 * scale)
-
-        blf.size(font, fontsize, 72)
-        blf.color(font, *color, alpha)
-        blf.position(font, (region.width / 2) - int(60 * scale), 0 + offset + int(fontsize), 0)
-
-        blf.draw(font, title)
-
-
-def draw_screen_cast_HUD(context):
-    p = get_prefs()
-    operators = get_last_operators(context, debug=False)[-p.screencast_operator_count:]
-
-    font = 0
-    scale = context.preferences.view.ui_scale * get_prefs().HUD_scale
-
-    # initiate the horizontal offset based on the presence of the tools bar
-    tools = [r for r in context.area.regions if r.type == 'TOOLS']
-    offset_x = tools[0].width if tools else 0
-
-    # then add some more depending on wether the addon prefix is used
-    offset_x += 7 if p.screencast_show_addon else 15
-
-    # initiate the vertical offset based on the height of the redo panel, use a 50px base offset
-    redo = [r for r in context.area.regions if r.type == 'HUD']
-    offset_y = redo[0].height + 50 if redo else 50
-
-    # emphasize the last op
-    emphasize = 1.25
-
-    # get addon prefix offset, based on widest possiblestring 'MM', and based on empasized last op's size
-    if p.screencast_show_addon:
-        blf.size(font, round(p.screencast_fontsize * scale * emphasize), 72)
-        addon_offset_x = blf.dimensions(font, 'MM')[0]
-    else:
-        addon_offset_x = 0
-
-    y = 0
-    hgap = 10
-
-    for idx, (addon, label, idname, prop) in enumerate(reversed(operators)):
-        size = round(p.screencast_fontsize * scale * (emphasize if idx == 0 else 1))
-        vgap = round(size / 2)
-
-        color = green if idname.startswith('machin3.') and p.screencast_highlight_machin3 else white
-        alpha = (len(operators) - idx) / len(operators)
-
-        # enable shadowing for the last op and idname
-        if idx == 0:
-            blf.enable(font, blf.SHADOW)
-
-            blf.shadow_offset(font, 3, -3)
-            blf.shadow(font, 5, *black, 1.0)
-
-
-        # label
-
-        text = f"{label}: {prop}" if prop else label
-
-        x = offset_x + addon_offset_x
-        y = offset_y * scale if idx == 0 else y + (blf.dimensions(font, text)[1] + vgap)
-
-        blf.size(font, size, 72)
-        blf.color(font, *color, alpha)
-        blf.position(font, x, y, 0)
-
-        blf.draw(font, text)
-
-
-        # idname
-
-        if p.screencast_show_idname:
-            x += blf.dimensions(font, text)[0] + hgap
-
-            blf.size(font, size - 2, 72)
-            blf.color(font, *color, alpha * 0.3)
-            blf.position(font, x, y, 0)
-
-            blf.draw(font, f"{idname}")
-
-            # reset size
-            blf.size(font, size, 72)
-
-
-        # diable shadowing, we don't want to use it for the addon prefix or for the other ops
-        if idx == 0:
-            blf.disable(font, blf.SHADOW)
-
-
-        # addon prefix
-
-        if addon and p.screencast_show_addon:
-            blf.size(font, size, 72)
-
-            x = offset_x + addon_offset_x - blf.dimensions(font, addon)[0] - (hgap / 2)
-
-            blf.color(font, *white, alpha * 0.3)
-            blf.position(font, x, y, 0)
-
-            blf.draw(font, addon)
-
-        if idx == 0:
-            y += blf.dimensions(font, text)[1]
-
-
-# HUD
-
-def draw_init(self, event):
-    self.font_id = 1
-    self.offset = 0
-
-
-def update_HUD_location(self, event, offsetx=20, offsety=20):
-    '''
-    previously, this was done in draw_init
-    however, due to a Blender issue this has some issues when tools are called from keymaps, not from the menu
-    see https://blenderartists.org/t/meshmachine/1102529/703
-    '''
-
-    # if get_prefs().modal_hud_follow_mouse:
-    self.HUD_x = event.mouse_x - self.region_offset_x + offsetx
-    self.HUD_y = event.mouse_y - self.region_offset_y + offsety
-
-
-"""
-def draw_label(context, title='', coords=None, center=True, color=(1, 1, 1), alpha=1):
-
-    # centered, but slighly below
-    if not coords:
-        region = context.region
-        width = region.width / 2
-        height = region.height / 2
-    else:
-        width, height = coords
-
-    scale = context.preferences.view.ui_scale * get_prefs().HUD_scale
-
-    font = 1
-    fontsize = int(12 * scale)
-
-    blf.size(font, fontsize, 72)
-    blf.color(font, *color, alpha)
-
-    if center:
-        blf.position(font, width - (int(len(title) * scale * 7) / 2), height + int(fontsize), 0)
-    else:
-        blf.position(font, *(coords), 1)
-
-    # blf.position(font, 10, 10, 0)
-
-    blf.draw(font, title)
-"""
-
-def draw_label(context, title='', coords=None, offset=0, center=True, size=12, color=(1, 1, 1), alpha=1, return_dimensions=False):
-
-    # centered, but slighly below
-    if not coords:
-        region = context.region
-        width = region.width / 2
-        height = region.height / 2
-    else:
-        width, height = coords
-
-    scale = context.preferences.view.ui_scale * get_prefs().HUD_scale
-
-    font = 1
-    fontsize = int(size * scale)
-
-    blf.size(font, fontsize, 72)
-    blf.color(font, *color, alpha)
-
-    if center:
-        blf.position(font, width - (int(len(title) * scale * 7) / 2), height + int(fontsize) + offset, 0)
-    else:
-        # blf.position(font, *(coords), 1)
-        blf.position(font, coords[0], coords[1] - (offset * scale), 1)
-
-    # blf.position(font, 10, 10, 0)
-
-    blf.draw(font, title)
-
-    if return_dimensions:
-        return blf.dimensions(font, title)
 
 
 # BASIC
@@ -557,13 +217,95 @@ def draw_vectors(vectors, origins, mx=Matrix(), color=(1, 1, 1), width=1, alpha=
         bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_VIEW')
 
 
-def draw_circle(coords, size=10, width=1, segments=64, color=(1, 1, 1), alpha=1, xray=True, modal=True):
-    def draw():
-        gpu.state.depth_test_set('NONE' if xray else 'LESS_EQUAL')
-        gpu.state.blend_set('ALPHA' if alpha < 1 else 'NONE')
-        gpu.state.line_width_set(width)
+# ADVANCED
 
-        draw_circle_2d(coords, (*color, alpha), size, segments=segments)
+def draw_circle(loc=Vector(), rot=Quaternion(), radius=100, segments='AUTO', width=1, color=(1, 1, 1), alpha=1, xray=True, modal=True, screen=False):
+    '''
+    draw a circle
+    no need to pass in a rotation if you draw in 2d space of course
+    and if you skip in in 3d, then the circle will be simply workd z aligned
+    '''
+
+    def draw():
+        nonlocal segments
+
+        # simply use the raduis as the segment count, this seems to work remarkably well, ensure a minimum of 16 though
+        if segments == 'AUTO':
+            segments = max(int(radius), 16)
+
+        # even when passed in, ensure it's at least 16
+        else:
+            segments = max(segments, 16)
+
+        # create the indices to create a cyclic line
+        indices = [(i, i + 1) if i < segments - 1 else (i, 0) for i in range(segments)]
+
+        # get the coords of a circle facing upwards, so all z coords will be 0
+        coords = []
+
+        for i in range(segments):
+
+            # get the angle for each segment
+            theta = 2 * pi * i / segments
+
+            # then the x and y coords
+            x = loc.x + radius * cos(theta)
+            y = loc.y + radius * sin(theta)
+
+            # collect the coords
+            coords.append(Vector((x, y, 0)))
+
+        gpu.state.depth_test_set('NONE' if xray else 'LESS_EQUAL')
+        gpu.state.blend_set('ALPHA')
+
+        shader = gpu.shader.from_builtin('POLYLINE_UNIFORM_COLOR')
+        shader.uniform_float("color", (*color, alpha))
+        shader.uniform_float("lineWidth", width)
+        shader.uniform_float("viewportSize", gpu.state.scissor_get()[2:])
+        shader.bind()
+
+        batch = batch_for_shader(shader, 'LINES', {"pos": [rot @ co for co in coords]}, indices=indices)
+        batch.draw(shader)
+
+    if modal:
+        draw()
+
+    elif screen:
+        bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_PIXEL')
+
+    else:
+        bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_VIEW')
+
+
+def draw_cross_3d(co, mx=Matrix(), color=(1, 1, 1), width=1, length=1, alpha=1, xray=True, modal=True):
+    '''
+    draws a 3d cross at passed in location with length
+    used to draw a mirror empty (together with a 2d circle)
+    '''
+
+    def draw():
+
+        x = Vector((1, 0, 0))
+        y = Vector((0, 1, 0))
+        z = Vector((0, 0, 1))
+
+        coords = [(co - x) * length, (co + x) * length,
+                  (co - y) * length, (co + y) * length,
+                  (co - z) * length, (co + z) * length]
+
+        indices = [(0, 1), (2, 3), (4, 5)]
+
+        gpu.state.depth_test_set('NONE' if xray else 'LESS_EQUAL')
+        gpu.state.blend_set('ALPHA')
+
+        shader = gpu.shader.from_builtin('POLYLINE_UNIFORM_COLOR')
+        shader.uniform_float("color", (*color, alpha))
+        shader.uniform_float("lineWidth", width)
+        shader.uniform_float("viewportSize", gpu.state.scissor_get()[2:])
+        shader.bind()
+
+        batch = batch_for_shader(shader, 'LINES', {"pos": [mx @ co for co in coords]}, indices=indices)
+        batch.draw(shader)
 
     if modal:
         draw()
@@ -690,57 +432,348 @@ def draw_bbox(bbox, mx=Matrix(), color=(1, 1, 1), corners=0, width=1, alpha=1, x
         bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_VIEW')
 
 
-def draw_cross_3d(co, mx=Matrix(), color=(1, 1, 1), width=1, length=1, alpha=1, xray=True, modal=True):
+# HUD
+
+def draw_init(self, event):
+    self.font_id = 1
+    self.offset = 0
+
+
+def update_HUD_location(self, event, offsetx=20, offsety=20):
     '''
-    draws a 3d cross at passed in location with length
-    used to draw a mirror empty (together with a 2d circle)
+    previously, this was done in draw_init
+    however, due to a Blender issue this has some issues when tools are called from keymaps, not from the menu
+    see https://blenderartists.org/t/meshmachine/1102529/703
     '''
 
-    def draw():
+    # if get_prefs().modal_hud_follow_mouse:
+    self.HUD_x = event.mouse_x - self.region_offset_x + offsetx
+    self.HUD_y = event.mouse_y - self.region_offset_y + offsety
 
-        x = Vector((1, 0, 0))
-        y = Vector((0, 1, 0))
-        z = Vector((0, 0, 1))
 
-        coords = [(co - x) * length, (co + x) * length,
-                  (co - y) * length, (co + y) * length,
-                  (co - z) * length, (co + z) * length]
+"""
+def draw_label(context, title='', coords=None, center=True, color=(1, 1, 1), alpha=1):
 
-        indices = [(0, 1), (2, 3), (4, 5)]
-
-        gpu.state.depth_test_set('NONE' if xray else 'LESS_EQUAL')
-        gpu.state.blend_set('ALPHA')
-
-        shader = gpu.shader.from_builtin('POLYLINE_UNIFORM_COLOR')
-        shader.uniform_float("color", (*color, alpha))
-        shader.uniform_float("lineWidth", width)
-        shader.uniform_float("viewportSize", gpu.state.scissor_get()[2:])
-        shader.bind()
-
-        batch = batch_for_shader(shader, 'LINES', {"pos": [mx @ co for co in coords]}, indices=indices)
-        batch.draw(shader)
-
-    if modal:
-        draw()
-
+    # centered, but slighly below
+    if not coords:
+        region = context.region
+        width = region.width / 2
+        height = region.height / 2
     else:
-        bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_VIEW')
+        width, height = coords
 
+    scale = context.preferences.view.ui_scale * get_prefs().HUD_scale
 
-def draw_tris(coords, indices=None, mx=Matrix(), color=(1, 1, 1), alpha=1, xray=True, modal=True):
-    def draw():
-        gpu.state.depth_test_set('NONE' if xray else 'LESS_EQUAL')
-        gpu.state.blend_set('ALPHA' if alpha < 1 else 'NONE')
+    font = 1
+    fontsize = int(12 * scale)
 
-        shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-        shader.bind()
-        shader.uniform_float("color", (*color, alpha))
+    blf.size(font, fontsize, 72)
+    blf.color(font, *color, alpha)
 
-        batch = batch_for_shader(shader, 'TRIS', {"pos": [mx @ co for co in coords]}, indices=indices)
-        batch.draw(shader)
-
-    if modal:
-        draw()
-
+    if center:
+        blf.position(font, width - (int(len(title) * scale * 7) / 2), height + int(fontsize), 0)
     else:
-        bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_VIEW')
+        blf.position(font, *(coords), 1)
+
+    # blf.position(font, 10, 10, 0)
+
+    blf.draw(font, title)
+"""
+
+def draw_label(context, title='', coords=None, offset=0, center=True, size=12, color=(1, 1, 1), alpha=1, return_dimensions=False):
+
+    # centered, but slighly below
+    if not coords:
+        region = context.region
+        width = region.width / 2
+        height = region.height / 2
+    else:
+        width, height = coords
+
+    scale = context.preferences.view.ui_scale * get_prefs().HUD_scale
+
+    font = 1
+    fontsize = int(size * scale)
+
+    blf.size(font, fontsize, 72)
+    blf.color(font, *color, alpha)
+
+    if center:
+        blf.position(font, width - (int(len(title) * scale * 7) / 2), height + int(fontsize) + offset, 0)
+    else:
+        # blf.position(font, *(coords), 1)
+        blf.position(font, coords[0], coords[1] - (offset * scale), 1)
+
+    # blf.position(font, 10, 10, 0)
+
+    blf.draw(font, title)
+
+    if return_dimensions:
+        return blf.dimensions(font, title)
+
+
+# AXES
+
+hypercursor = None
+
+def draw_axes_HUD(context, objects):
+    global hypercursor
+    
+    if not hypercursor:
+        hypercursor = get_addon('HyperCursor')[0]
+
+
+    if context.space_data.overlay.show_overlays:
+        m3 = context.scene.M3
+
+        size = m3.draw_axes_size
+        alpha = m3.draw_axes_alpha - 0.001
+        screenspace = m3.draw_axes_screenspace
+        ui_scale = context.preferences.view.ui_scale
+
+        show_cursor = context.space_data.overlay.show_cursor
+        show_hyper_cursor = hypercursor and get_active_tool(context).idname in ['machin3.tool_hyper_cursor', 'machin3.tool_hyper_cursor_simple'] and context.scene.HC.show_gizmos
+
+        axes = [(Vector((1, 0, 0)), red), (Vector((0, 1, 0)), green), (Vector((0, 0, 1)), blue)]
+
+        for axis, color in axes:
+            coords = []
+
+            # draw object(s)
+            for obj in objects:
+
+                # CURSOR
+
+                if obj == 'CURSOR':
+
+                    # only show the cursor axes when the hyper cursor gizmo isn't shown
+                    if not show_hyper_cursor:
+                        mx = context.scene.cursor.matrix
+                        origin = mx.decompose()[0]
+
+                        factor = get_zoom_factor(context, origin, scale=300, ignore_obj_scale=True) if screenspace else 1
+
+                        if show_cursor and screenspace:
+                            coords.append(origin + (mx.to_3x3() @ axis).normalized() * 0.1 * ui_scale * factor * 0.8)
+                            coords.append(origin + (mx.to_3x3() @ axis).normalized() * 0.1 * ui_scale * factor * 1.2)
+
+                        else:
+                            coords.append(origin + (mx.to_3x3() @ axis).normalized() * size * ui_scale * factor * 0.9)
+                            coords.append(origin + (mx.to_3x3() @ axis).normalized() * size * ui_scale * factor)
+
+                            coords.append(origin + (mx.to_3x3() @ axis).normalized() * size * ui_scale * factor * 0.1)
+                            coords.append(origin + (mx.to_3x3() @ axis).normalized() * size * ui_scale * factor * 0.7)
+
+                # OBJECT
+
+                elif str(obj) != '<bpy_struct, Object invalid>':
+                    mx = obj.matrix_world
+                    origin = mx.decompose()[0]
+
+                    factor = get_zoom_factor(context, origin, scale=300, ignore_obj_scale=True) if screenspace else 1
+
+                    coords.append(origin + (mx.to_3x3() @ axis).normalized() * size * ui_scale * factor * 0.1)
+                    coords.append(origin + (mx.to_3x3() @ axis).normalized() * size * ui_scale * factor)
+
+                    """
+                    # debuging stash + stashtargtmx for object origin changes
+                    for stash in obj.MM.stashes:
+                        if s tash.obj:
+                            smx = sta sh.obj.MM.stashmx
+                            sorigin = smx.decompose()[0]
+
+                            coords.append(sorigin + smx.to_3x3() @ axis * size * 0.1)
+                            coords.append(sorigin + smx.to_3x3() @ axis * size)
+
+
+                            stmx = stash.obj.MM.stashtargetmx
+                            storigin = stmx.decompose()[0]
+
+                            coords.append(storigin + stmx.to_3x3() @ axis * size * 0.1)
+                            coords.append(storigin + stmx.to_3x3() @ axis * size)
+                    """
+
+            if coords:
+                indices = [(i, i + 1) for i in range(0, len(coords), 2)]
+
+                gpu.state.depth_test_set('NONE')
+                gpu.state.blend_set('ALPHA')
+
+                shader = gpu.shader.from_builtin('POLYLINE_UNIFORM_COLOR')
+                shader.uniform_float("color", (*color, alpha))
+                shader.uniform_float("lineWidth", 2)
+                shader.uniform_float("viewportSize", gpu.state.scissor_get()[2:])
+                shader.bind()
+
+                batch = batch_for_shader(shader, 'LINES', {"pos": coords}, indices=indices)
+                batch.draw(shader)
+
+
+# REGION FRAMES
+
+def draw_focus_HUD(context, color=(1, 1, 1), alpha=1, width=2):
+    if context.space_data.overlay.show_overlays:
+        region = context.region
+        view = context.space_data
+
+        # only draw when actually in local view, this prevents it being drawn when switing workspace, which doesn't sync local view
+        if view.local_view:
+
+            # draw border
+
+            coords = [(width, width), (region.width - width, width), (region.width - width, region.height - width), (width, region.height - width)]
+            indices =[(0, 1), (1, 2), (2, 3), (3, 0)]
+
+            shader = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
+            shader.bind()
+            shader.uniform_float("color", (*color, alpha / 4))
+
+            gpu.state.depth_test_set('NONE')
+            gpu.state.blend_set('ALPHA' if (alpha / 4) < 1 else 'NONE')
+            gpu.state.line_width_set(width)
+
+            batch = batch_for_shader(shader, 'LINES', {"pos": coords}, indices=indices)
+            batch.draw(shader)
+
+            # draw title
+
+            scale = context.preferences.view.ui_scale * get_prefs().HUD_scale
+            offset = 4
+
+            # add additional offset if necessary
+            if require_header_offset(context, top=True):
+                offset += int(25)
+
+            title = "Focus Level: %d" % len(context.scene.M3.focus_history)
+
+            stashes = True if context.active_object and getattr(context.active_object, 'MM', False) and getattr(context.active_object.MM, 'stashes') else False
+            center = (region.width / 2) + (scale * 100) if stashes else region.width / 2
+
+            font = 1
+            fontsize = int(12 * scale)
+
+            blf.size(font, fontsize, 72)
+            blf.color(font, *color, alpha)
+            blf.position(font, center - int(60 * scale), region.height - offset - int(fontsize), 0)
+
+            blf.draw(font, title)
+
+
+def draw_surface_slide_HUD(context, color=(1, 1, 1), alpha=1, width=2):
+    if context.space_data.overlay.show_overlays:
+        region = context.region
+
+        scale = context.preferences.view.ui_scale * get_prefs().HUD_scale
+        offset = 0
+
+        if require_header_offset(context, top=False):
+            offset += int(20)
+
+        title = "Surface Sliding"
+
+        font = 1
+        fontsize = int(12 * scale)
+
+        blf.size(font, fontsize, 72)
+        blf.color(font, *color, alpha)
+        blf.position(font, (region.width / 2) - int(60 * scale), 0 + offset + int(fontsize), 0)
+
+        blf.draw(font, title)
+
+
+# SCREENCAST
+
+def draw_screen_cast_HUD(context):
+    p = get_prefs()
+    operators = get_last_operators(context, debug=False)[-p.screencast_operator_count:]
+
+    font = 0
+    scale = context.preferences.view.ui_scale * get_prefs().HUD_scale
+
+    # initiate the horizontal offset based on the presence of the tools bar
+    tools = [r for r in context.area.regions if r.type == 'TOOLS']
+    offset_x = tools[0].width if tools else 0
+
+    # then add some more depending on wether the addon prefix is used
+    offset_x += 7 if p.screencast_show_addon else 15
+
+    # initiate the vertical offset based on the height of the redo panel, use a 50px base offset
+    redo = [r for r in context.area.regions if r.type == 'HUD']
+    offset_y = redo[0].height + 50 if redo else 50
+
+    # emphasize the last op
+    emphasize = 1.25
+
+    # get addon prefix offset, based on widest possiblestring 'MM', and based on empasized last op's size
+    if p.screencast_show_addon:
+        blf.size(font, round(p.screencast_fontsize * scale * emphasize), 72)
+        addon_offset_x = blf.dimensions(font, 'MM')[0]
+    else:
+        addon_offset_x = 0
+
+    y = 0
+    hgap = 10
+
+    for idx, (addon, label, idname, prop) in enumerate(reversed(operators)):
+        size = round(p.screencast_fontsize * scale * (emphasize if idx == 0 else 1))
+        vgap = round(size / 2)
+
+        color = green if idname.startswith('machin3.') and p.screencast_highlight_machin3 else white
+        alpha = (len(operators) - idx) / len(operators)
+
+        # enable shadowing for the last op and idname
+        if idx == 0:
+            blf.enable(font, blf.SHADOW)
+
+            blf.shadow_offset(font, 3, -3)
+            blf.shadow(font, 5, *black, 1.0)
+
+
+        # label
+
+        text = f"{label}: {prop}" if prop else label
+
+        x = offset_x + addon_offset_x
+        y = offset_y * scale if idx == 0 else y + (blf.dimensions(font, text)[1] + vgap)
+
+        blf.size(font, size, 72)
+        blf.color(font, *color, alpha)
+        blf.position(font, x, y, 0)
+
+        blf.draw(font, text)
+
+
+        # idname
+
+        if p.screencast_show_idname:
+            x += blf.dimensions(font, text)[0] + hgap
+
+            blf.size(font, size - 2, 72)
+            blf.color(font, *color, alpha * 0.3)
+            blf.position(font, x, y, 0)
+
+            blf.draw(font, f"{idname}")
+
+            # reset size
+            blf.size(font, size, 72)
+
+
+        # diable shadowing, we don't want to use it for the addon prefix or for the other ops
+        if idx == 0:
+            blf.disable(font, blf.SHADOW)
+
+
+        # addon prefix
+
+        if addon and p.screencast_show_addon:
+            blf.size(font, size, 72)
+
+            x = offset_x + addon_offset_x - blf.dimensions(font, addon)[0] - (hgap / 2)
+
+            blf.color(font, *white, alpha * 0.3)
+            blf.position(font, x, y, 0)
+
+            blf.draw(font, addon)
+
+        if idx == 0:
+            y += blf.dimensions(font, text)[1]

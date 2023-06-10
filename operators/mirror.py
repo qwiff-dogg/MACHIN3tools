@@ -177,7 +177,7 @@ class Mirror(bpy.types.Operator):
 
             color = red if self.remove else white
             alpha = 0.2 if self.remove else 0.02
-            draw_circle(self.init_mouse, size=self.flick_distance, width=3, color=color, alpha=alpha)
+            draw_circle(self.init_mouse, radius=self.flick_distance, width=3, color=color, alpha=alpha)
 
             title = 'Remove' if self.remove else 'Mirror'
             alpha = 1 if self.remove else 0.8
@@ -208,7 +208,7 @@ class Mirror(bpy.types.Operator):
                 if self.passthrough:
                     self.mirror_obj_2d = get_loc_2d(context, self.mirror_obj.matrix_world.to_translation())
 
-                draw_circle(self.mirror_obj_2d, size=10 * self.scale, width=2 * self.scale, color=blue, alpha=1)
+                draw_circle(self.mirror_obj_2d, radius=10 * self.scale, width=2 * self.scale, color=blue, alpha=1)
 
     def draw_VIEW3D(self, context):
         for direction, axis, color in zip(self.axes.keys(), self.axes.values(), self.colors):
