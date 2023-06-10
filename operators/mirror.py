@@ -173,7 +173,7 @@ class Mirror(bpy.types.Operator):
             # draw_point(self.init_mouse, color=(1, 1, 1), size=4)
             # draw_point(self.mousepos, color=(0, 1, 0))
 
-            draw_vector(self.flick_vector, origin=self.init_mouse, alpha=0.99)
+            draw_vector(self.flick_vector, origin=self.init_mouse, alpha=1)
 
             color = red if self.remove else white
             alpha = 0.2 if self.remove else 0.02
@@ -208,13 +208,13 @@ class Mirror(bpy.types.Operator):
                 if self.passthrough:
                     self.mirror_obj_2d = get_loc_2d(context, self.mirror_obj.matrix_world.to_translation())
 
-                draw_circle(self.mirror_obj_2d, size=10 * self.scale, width=2 * self.scale, color=blue, alpha=0.99)
+                draw_circle(self.mirror_obj_2d, size=10 * self.scale, width=2 * self.scale, color=blue, alpha=1)
 
     def draw_VIEW3D(self, context):
         for direction, axis, color in zip(self.axes.keys(), self.axes.values(), self.colors):
             positive = 'POSITIVE' in direction
 
-            # draw_vector(axis * self.zoom / 2, origin=self.origin, color=color, width=2 if positive else 1, alpha=0.99 if positive else 0.3)
+            # draw_vector(axis * self.zoom / 2, origin=self.origin, color=color, width=2 if positive else 1, alpha=1 if positive else 0.3)
             width, alpha = (2, 0.99) if positive or self.remove else (1, 0.3)
             draw_vector(axis * self.zoom / 2, origin=self.init_mouse_3d, color=color, width=width, alpha=alpha)
 
@@ -232,7 +232,7 @@ class Mirror(bpy.types.Operator):
             elif self.mirror_obj.type == 'EMPTY':
                 # get cursor's local space location haha
                 loc = mx.inverted_safe() @ mx.to_translation()
-                draw_cross_3d(loc, mx=mx, color=blue, width=2 * self.scale, length=2 * self.cursor_empty_zoom, alpha=0.99)
+                draw_cross_3d(loc, mx=mx, color=blue, width=2 * self.scale, length=2 * self.cursor_empty_zoom, alpha=1)
 
     def modal(self, context, event):
         context.area.tag_redraw()

@@ -93,15 +93,14 @@ def draw_axes_HUD(context, objects):
             if coords:
                 indices = [(i, i + 1) for i in range(0, len(coords), 2)]
 
-                shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-                shader.bind()
-                shader.uniform_float("color", (*color, alpha))
-
                 gpu.state.depth_test_set('NONE')
-                gpu.state.blend_set('ALPHA' if alpha < 1 else 'NONE')
-                gpu.state.line_width_set(2)
+                gpu.state.blend_set('ALPHA')
 
-                use_legacy_line_smoothing(alpha, 2)
+                shader = gpu.shader.from_builtin('POLYLINE_UNIFORM_COLOR')
+                shader.uniform_float("color", (*color, alpha))
+                shader.uniform_float("lineWidth", 2)
+                shader.uniform_float("viewportSize", gpu.state.scissor_get()[2:])
+                shader.bind()
 
                 batch = batch_for_shader(shader, 'LINES', {"pos": coords}, indices=indices)
                 batch.draw(shader)
@@ -279,6 +278,7 @@ def draw_init(self, event):
     self.font_id = 1
     self.offset = 0
 
+
 def update_HUD_location(self, event, offsetx=20, offsety=20):
     '''
     previously, this was done in draw_init
@@ -352,28 +352,9 @@ def draw_label(context, title='', coords=None, offset=0, center=True, size=12, c
         return blf.dimensions(font, title)
 
 
-
-
 # BASIC
 
-def use_legacy_line_smoothing(alpha, width):
-    '''
-    legacy line smoothing using the depreciated bgl module
-    be prepared for blg no longer being available
-    '''
-
-    if get_prefs().use_legacy_line_smoothing and alpha < 1:
-        try:
-            import bgl
-
-            bgl.glEnable(bgl.GL_BLEND)
-            bgl.glLineWidth(width)
-            bgl.glEnable(bgl.GL_LINE_SMOOTH)
-        except:
-            pass
-
-
-def draw_point(co, mx=Matrix(), color=(1, 1, 1), size=6, alpha=1, xray=True, modal=True):
+def draw_point(co, mx=Matrix(), color=(1, 1, 1), size=6, alpha=1, xray=True, modal=True, screen=False):
     def draw():
         shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
         shader.bind()
@@ -389,11 +370,14 @@ def draw_point(co, mx=Matrix(), color=(1, 1, 1), size=6, alpha=1, xray=True, mod
     if modal:
         draw()
 
+    elif screen:
+        bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_PIXEL')
+
     else:
         bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_VIEW')
 
 
-def draw_points(coords, indices=None, mx=Matrix(), color=(1, 1, 1), size=6, alpha=1, xray=True, modal=True):
+def draw_points(coords, indices=None, mx=Matrix(), color=(1, 1, 1), size=6, alpha=1, xray=True, modal=True, screen=False):
     def draw():
         shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
         shader.bind()
@@ -402,7 +386,7 @@ def draw_points(coords, indices=None, mx=Matrix(), color=(1, 1, 1), size=6, alph
         gpu.state.depth_test_set('NONE' if xray else 'LESS_EQUAL')
         gpu.state.blend_set('ALPHA' if alpha < 1 else 'NONE')
         gpu.state.point_size_set(size)
-
+#
         if indices:
             if mx != Matrix():
                 batch = batch_for_shader(shader, 'POINTS', {"pos": [mx @ co for co in coords]}, indices=indices)
@@ -417,34 +401,37 @@ def draw_points(coords, indices=None, mx=Matrix(), color=(1, 1, 1), size=6, alph
 
         batch.draw(shader)
 
-
     if modal:
         draw()
+
+    elif screen:
+        bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_PIXEL')
 
     else:
         bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_VIEW')
 
 
-def draw_line(coords, indices=None, mx=Matrix(), color=(1, 1, 1), width=1, alpha=1, xray=True, modal=True):
-    """
+def draw_line(coords, indices=None, mx=Matrix(), color=(1, 1, 1), alpha=1, width=1, xray=True, modal=True, screen=False):
+    '''
     takes coordinates and draws a single line
     can optionally take an indices argument to specify how it should be drawn
-    """
+    '''
+
     def draw():
         nonlocal indices
 
-        if not indices:
+        if indices is None:
             indices = [(i, i + 1) for i in range(0, len(coords)) if i < len(coords) - 1]
-
-        shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-        shader.bind()
-        shader.uniform_float("color", (*color, alpha))
+            # TODO: simplify
 
         gpu.state.depth_test_set('NONE' if xray else 'LESS_EQUAL')
-        gpu.state.blend_set('ALPHA' if alpha < 1 else 'NONE')
-        gpu.state.line_width_set(width)
+        gpu.state.blend_set('ALPHA')
 
-        use_legacy_line_smoothing(alpha, width)
+        shader = gpu.shader.from_builtin('POLYLINE_UNIFORM_COLOR')
+        shader.uniform_float("color", (*color, alpha))
+        shader.uniform_float("lineWidth", width)
+        shader.uniform_float("viewportSize", gpu.state.scissor_get()[2:])
+        shader.bind()
 
         batch = batch_for_shader(shader, 'LINES', {"pos": [mx @ co for co in coords]}, indices=indices)
         batch.draw(shader)
@@ -452,96 +439,119 @@ def draw_line(coords, indices=None, mx=Matrix(), color=(1, 1, 1), width=1, alpha
     if modal:
         draw()
 
+    elif screen:
+        bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_PIXEL')
+
     else:
         bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_VIEW')
 
 
-def draw_lines(coords, indices=None, mx=Matrix(), color=(1, 1, 1), width=1, alpha=1, xray=True, modal=True):
-    """
+def draw_lines(coords, indices=None, mx=Matrix(), color=(1, 1, 1), width=1, alpha=1, xray=True, modal=True, screen=False):
+    '''
     takes an even amount of coordinates and draws half as many 2-point lines
-    """
+    '''
+
     def draw():
         nonlocal indices
 
         if not indices:
             indices = [(i, i + 1) for i in range(0, len(coords), 2)]
-
-        shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-        shader.bind()
-        shader.uniform_float("color", (*color, alpha))
+            # TODO: simplifiy?
 
         gpu.state.depth_test_set('NONE' if xray else 'LESS_EQUAL')
-        gpu.state.blend_set('ALPHA' if alpha < 1 else 'NONE')
-        gpu.state.line_width_set(width)
+        gpu.state.blend_set('ALPHA')
 
-        use_legacy_line_smoothing(alpha, width)
+        shader = gpu.shader.from_builtin('POLYLINE_UNIFORM_COLOR')
+        shader.uniform_float("color", (*color, alpha))
+        shader.uniform_float("lineWidth", width)
+        shader.uniform_float("viewportSize", gpu.state.scissor_get()[2:])
+        shader.bind()
 
-        if mx != Matrix():
-            batch = batch_for_shader(shader, 'LINES', {"pos": [mx @ co for co in coords]}, indices=indices)
-
-        else:
-            batch = batch_for_shader(shader, 'LINES', {"pos": coords}, indices=indices)
-
+        batch = batch_for_shader(shader, 'LINES', {"pos": [mx @ co for co in coords]}, indices=indices)
         batch.draw(shader)
 
     if modal:
         draw()
 
+    elif screen:
+        bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_PIXEL')
+
     else:
         bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_VIEW')
 
 
-def draw_vector(vector, origin=Vector((0, 0, 0)), mx=Matrix(), color=(1, 1, 1), width=1, alpha=1, xray=True, modal=True):
+def draw_vector(vector, origin=Vector((0, 0, 0)), mx=Matrix(), color=(1, 1, 1), width=1, alpha=1, fade=False, normal=False, xray=True, modal=True, screen=False):
+    '''
+    takes a vector and an optional origin and draws a single line representing it, fading from the origin to the tip!
+    '''
+    
     def draw():
-        coords = [mx @ origin, mx @ origin + mx.to_3x3() @ vector]
 
-        shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-        shader.bind()
-        shader.uniform_float("color", (*color, alpha))
+        if normal:
+            coords = [mx @ origin, mx @ origin + get_world_space_normal(vector, mx)]
+        else:
+            coords = [mx @ origin, mx @ origin + mx.to_3x3() @ vector]
+
+        colors = ((*color, alpha), (*color, alpha / 10 if fade else alpha))
 
         gpu.state.depth_test_set('NONE' if xray else 'LESS_EQUAL')
-        gpu.state.blend_set('ALPHA' if alpha < 1 else 'NONE')
-        gpu.state.line_width_set(width)
+        gpu.state.blend_set('ALPHA')
 
-        use_legacy_line_smoothing(alpha, width)
+        shader = gpu.shader.from_builtin('POLYLINE_SMOOTH_COLOR')
+        shader.uniform_float("lineWidth", width)
+        shader.uniform_float("viewportSize", gpu.state.scissor_get()[2:])
+        shader.bind()
 
-        batch = batch_for_shader(shader, 'LINES', {"pos": coords})
+        batch = batch_for_shader(shader, 'LINES', {"pos": coords, "color": colors})
         batch.draw(shader)
-
 
     if modal:
         draw()
+
+    elif screen:
+        bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_PIXEL')
 
     else:
         bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_VIEW')
 
 
-def draw_vectors(vectors, origins, mx=Matrix(), color=(1, 1, 1), width=1, alpha=1, xray=True, modal=True):
+def draw_vectors(vectors, origins, mx=Matrix(), color=(1, 1, 1), width=1, alpha=1, fade=False, normal=False, xray=True, modal=True, screen=False):
+    '''
+    takes a list of vectors and origins and draws a line for each pair, fading from the origin to the tip!
+    '''
+
     def draw():
         coords = []
+        colors = []
 
         for v, o in zip(vectors, origins):
             coords.append(mx @ o)
-            coords.append(mx @ o + mx.to_3x3() @ v)
+
+            if normal:
+                coords.append(mx @ o + get_world_space_normal(v, mx))
+            else:
+                coords.append(mx @ o + mx.to_3x3() @ v)
+
+            colors.extend([(*color, alpha), (*color, alpha / 10 if fade else alpha)])
 
         indices = [(i, i + 1) for i in range(0, len(coords), 2)]
 
-        shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-        shader.bind()
-        shader.uniform_float("color", (*color, alpha))
-
         gpu.state.depth_test_set('NONE' if xray else 'LESS_EQUAL')
-        gpu.state.blend_set('ALPHA' if alpha < 1 else 'NONE')
-        gpu.state.line_width_set(width)
+        gpu.state.blend_set('ALPHA')
 
-        use_legacy_line_smoothing(alpha, width)
+        shader = gpu.shader.from_builtin('POLYLINE_SMOOTH_COLOR')
+        shader.uniform_float("lineWidth", width)
+        shader.uniform_float("viewportSize", gpu.state.scissor_get()[2:])
+        shader.bind()
 
-        batch = batch_for_shader(shader, 'LINES', {"pos": coords}, indices=indices)
+        batch = batch_for_shader(shader, 'LINES', {"pos": coords, "color": colors})
         batch.draw(shader)
-
 
     if modal:
         draw()
+
+    elif screen:
+        bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_PIXEL')
 
     else:
         bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_VIEW')
@@ -553,8 +563,6 @@ def draw_circle(coords, size=10, width=1, segments=64, color=(1, 1, 1), alpha=1,
         gpu.state.blend_set('ALPHA' if alpha < 1 else 'NONE')
         gpu.state.line_width_set(width)
 
-        use_legacy_line_smoothing(alpha, width)
-
         draw_circle_2d(coords, (*color, alpha), size, segments=segments)
 
     if modal:
@@ -564,13 +572,16 @@ def draw_circle(coords, size=10, width=1, segments=64, color=(1, 1, 1), alpha=1,
         bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_VIEW')
 
 
-def draw_mesh_wire(batch, color=(1, 1, 1), width=1, alpha=1, xray=True, modal=True):
-    """
-    takes tupple of (coords, indices) and draws a line for each edge index
-    """
+def draw_tris(coords, indices=None, mx=Matrix(), color=(1, 1, 1), alpha=1, xray=True, modal=True):
+    ''''
+    draw triangles, like those from mesh.calc_loop_triangles
+    '''
+
     def draw():
-        nonlocal batch
-        coords, indices = batch
+        # nonlocal indices
+
+        # if not indices:
+            # indices = [(i, i + 1) for i in range(0, len(coords), 2)]
 
         shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
         shader.bind()
@@ -578,9 +589,39 @@ def draw_mesh_wire(batch, color=(1, 1, 1), width=1, alpha=1, xray=True, modal=Tr
 
         gpu.state.depth_test_set('NONE' if xray else 'LESS_EQUAL')
         gpu.state.blend_set('ALPHA' if alpha < 1 else 'NONE')
-        gpu.state.line_width_set(width)
 
-        use_legacy_line_smoothing(alpha, width)
+        if mx != Matrix():
+            batch = batch_for_shader(shader, 'TRIS', {"pos": [mx @ co for co in coords]}, indices=indices)
+
+        else:
+            batch = batch_for_shader(shader, 'TRIS', {"pos": coords}, indices=indices)
+
+        batch.draw(shader)
+
+    if modal:
+        draw()
+
+    else:
+        bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_VIEW')
+
+
+def draw_mesh_wire(batch, color=(1, 1, 1), width=1, alpha=1, xray=True, modal=True):
+    '''
+    takes tupple of (coords, indices) and draws a line for each edge index
+    '''
+
+    def draw():
+        nonlocal batch
+        coords, indices = batch
+
+        gpu.state.depth_test_set('NONE' if xray else 'LESS_EQUAL')
+        gpu.state.blend_set('ALPHA')
+
+        shader = gpu.shader.from_builtin('POLYLINE_UNIFORM_COLOR')
+        shader.uniform_float("color", (*color, alpha))
+        shader.uniform_float("lineWidth", width)
+        shader.uniform_float("viewportSize", gpu.state.scissor_get()[2:])
+        shader.bind()
 
         b = batch_for_shader(shader, 'LINES', {"pos": coords}, indices=indices)
         b.draw(shader)
@@ -596,9 +637,10 @@ def draw_mesh_wire(batch, color=(1, 1, 1), width=1, alpha=1, xray=True, modal=Tr
 
 
 def draw_bbox(bbox, mx=Matrix(), color=(1, 1, 1), corners=0, width=1, alpha=1, xray=True, modal=True):
-    """
-    takes an even amount of coordinates and draws half as many 2-point lines
-    """
+    '''
+    draw bbox conrners, useful to highlight objects without drawing the wire
+    pass in a corners value > 0 to draw only the corners, not the entire bbox
+    '''
 
     def draw():
         if corners:
@@ -629,22 +671,16 @@ def draw_bbox(bbox, mx=Matrix(), color=(1, 1, 1), corners=0, width=1, alpha=1, x
                        (4, 5), (5, 6), (6, 7), (7, 4),
                        (0, 4), (1, 5), (2, 6), (3, 7)]
 
-        shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-        shader.bind()
-        shader.uniform_float("color", (*color, alpha))
-
         gpu.state.depth_test_set('NONE' if xray else 'LESS_EQUAL')
-        gpu.state.blend_set('ALPHA' if alpha < 1 else 'NONE')
-        gpu.state.line_width_set(width)
+        gpu.state.blend_set('ALPHA')
 
-        use_legacy_line_smoothing(alpha, width)
+        shader = gpu.shader.from_builtin('POLYLINE_UNIFORM_COLOR')
+        shader.uniform_float("color", (*color, alpha))
+        shader.uniform_float("lineWidth", width)
+        shader.uniform_float("viewportSize", gpu.state.scissor_get()[2:])
+        shader.bind()
 
-        if mx != Matrix():
-            batch = batch_for_shader(shader, 'LINES', {"pos": [mx @ co for co in coords]}, indices=indices)
-
-        else:
-            batch = batch_for_shader(shader, 'LINES', {"pos": coords}, indices=indices)
-
+        batch = batch_for_shader(shader, 'LINES', {"pos": [mx @ co for co in coords]}, indices=indices)
         batch.draw(shader)
 
     if modal:
@@ -655,9 +691,11 @@ def draw_bbox(bbox, mx=Matrix(), color=(1, 1, 1), corners=0, width=1, alpha=1, x
 
 
 def draw_cross_3d(co, mx=Matrix(), color=(1, 1, 1), width=1, length=1, alpha=1, xray=True, modal=True):
-    """
-    takes an even amount of coordinates and draws half as many 2-point lines
-    """
+    '''
+    draws a 3d cross at passed in location with length
+    used to draw a mirror empty (together with a 2d circle)
+    '''
+
     def draw():
 
         x = Vector((1, 0, 0))
@@ -670,22 +708,16 @@ def draw_cross_3d(co, mx=Matrix(), color=(1, 1, 1), width=1, length=1, alpha=1, 
 
         indices = [(0, 1), (2, 3), (4, 5)]
 
-        shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-        shader.bind()
-        shader.uniform_float("color", (*color, alpha))
-
         gpu.state.depth_test_set('NONE' if xray else 'LESS_EQUAL')
-        gpu.state.blend_set('ALPHA' if alpha < 1 else 'NONE')
-        gpu.state.line_width_set(width)
+        gpu.state.blend_set('ALPHA')
 
-        use_legacy_line_smoothing(alpha, width)
+        shader = gpu.shader.from_builtin('POLYLINE_UNIFORM_COLOR')
+        shader.uniform_float("color", (*color, alpha))
+        shader.uniform_float("lineWidth", width)
+        shader.uniform_float("viewportSize", gpu.state.scissor_get()[2:])
+        shader.bind()
 
-        if mx != Matrix():
-            batch = batch_for_shader(shader, 'LINES', {"pos": [mx @ co for co in coords]}, indices=indices)
-
-        else:
-            batch = batch_for_shader(shader, 'LINES', {"pos": coords}, indices=indices)
-
+        batch = batch_for_shader(shader, 'LINES', {"pos": [mx @ co for co in coords]}, indices=indices)
         batch.draw(shader)
 
     if modal:
@@ -695,22 +727,16 @@ def draw_cross_3d(co, mx=Matrix(), color=(1, 1, 1), width=1, length=1, alpha=1, 
         bpy.types.SpaceView3D.draw_handler_add(draw, (), 'WINDOW', 'POST_VIEW')
 
 
-
 def draw_tris(coords, indices=None, mx=Matrix(), color=(1, 1, 1), alpha=1, xray=True, modal=True):
     def draw():
+        gpu.state.depth_test_set('NONE' if xray else 'LESS_EQUAL')
+        gpu.state.blend_set('ALPHA' if alpha < 1 else 'NONE')
+
         shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
         shader.bind()
         shader.uniform_float("color", (*color, alpha))
 
-        gpu.state.depth_test_set('NONE' if xray else 'LESS_EQUAL')
-        gpu.state.blend_set('ALPHA' if alpha < 1 else 'NONE')
-
-        if mx != Matrix():
-            batch = batch_for_shader(shader, 'TRIS', {"pos": [mx @ co for co in coords]}, indices=indices)
-
-        else:
-            batch = batch_for_shader(shader, 'TRIS', {"pos": coords}, indices=indices)
-
+        batch = batch_for_shader(shader, 'TRIS', {"pos": [mx @ co for co in coords]}, indices=indices)
         batch.draw(shader)
 
     if modal:
