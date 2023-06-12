@@ -23,12 +23,15 @@ def reset_xray(context):
 
 
 def update_local_view(space_data, states):
-    """
+    '''
     states: list of (obj, bool) tuples, True being in local view, False being out
-    """
+    NOTE: obj can be nonw, for instance when loading a file and the obj has somehow been deleted
+    '''
+    
     if space_data.local_view:
         for obj, local in states:
-            obj.local_view_set(space_data, local)
+            if obj:
+                obj.local_view_set(space_data, local)
 
 
 def reset_viewport(context, disable_toolbar=False):
