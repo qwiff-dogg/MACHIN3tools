@@ -304,15 +304,24 @@ def extrude_menu(self, context):
 # MATERIAL PICKER HEADER
 
 def material_pick_button(self, context):
-    workspaces = [ws.strip() for ws in get_prefs().matpick_workspace_names.split(',')]
+    p = get_prefs()
 
-    if any([s in context.workspace.name for s in workspaces]):
+    workspaces = [ws.strip() for ws in p.matpick_workspace_names.split(',')]
+    shading = context.space_data.shading
+
+    view_shading_types = []
+    if p.matpick_shading_type_material:
+        view_shading_types.append('MATERIAL')
+
+    if p.matpick_shading_type_render:
+        view_shading_types.append('RENDER')
+
+    if any([s in context.workspace.name for s in workspaces]) or shading.type in view_shading_types:
         if getattr(bpy.types, 'MACHIN3_OT_material_picker', False):
             row = self.layout.row()
             row.scale_x = 1.25
             row.scale_y = 1.1
-            # row.separator_spacer()
-            row.separator(factor=get_prefs().matpick_spacing_obj if context.mode == 'OBJECT' else get_prefs().matpick_spacing_edit)
+            row.separator(factor=p.matpick_spacing_obj if context.mode == 'OBJECT' else p.matpick_spacing_edit)
             row.operator("machin3.material_picker", text="", icon="EYEDROPPER")
 
 

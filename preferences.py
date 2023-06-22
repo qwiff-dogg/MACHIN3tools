@@ -270,6 +270,8 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     matpick_show: BoolProperty(name="Show Material Picker Preferences", default=False)
 
     matpick_workspace_names: StringProperty(name="Workspaces the Material Picker should appear on", default="Shading, Material")
+    matpick_shading_type_material: BoolProperty(name="Show Material Picker in all Material Shading Viewports", default=True)
+    matpick_shading_type_render: BoolProperty(name="Show Material Picker in all Render Shading Viewports", default=False)
     matpick_spacing_obj: FloatProperty(name="Object Mode Spacing", min=0, default=20)
     matpick_spacing_edit: FloatProperty(name="Edit Mode Spacing", min=0, default=5)
 
@@ -925,7 +927,17 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                 row = column.row(align=True)
                 r = row.split(factor=0.2, align=True)
                 r.prop(self, "matpick_workspace_names", text="")
-                r.label(text="Workspace Names")
+                r.label(text="Show Material Picker in these Workspaces")
+
+                row = column.row(align=True)
+                r = row.split(factor=0.2, align=True)
+                r.prop(self, "matpick_shading_type_material", text=str(self.matpick_shading_type_material), toggle=True)
+                r.label(text="Show Material Picker in Views set to Material Shading")
+
+                row = column.row(align=True)
+                r = row.split(factor=0.2, align=True)
+                r.prop(self, "matpick_shading_type_render", text=str(self.matpick_shading_type_render), toggle=True)
+                r.label(text="Show Material Picker in Views set to Rendered Shading")
 
                 row = column.row(align=True)
                 r = row.split(factor=0.2, align=True)
