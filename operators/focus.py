@@ -66,7 +66,7 @@ class Focus(bpy.types.Operator):
                 return
 
             if self.ignore_mirrors:
-                mirrors = [mod for obj in sel for mod in obj.modifiers if mod.type == 'MIRROR' and mod.show_viewport]
+                mirrors = [mod for obj in sel for mod in obj.modifiers if mod.type == 'MIRROR' and mod.show_viewport and mod.mirror_object]
 
                 for mod in mirrors:
                     mod.show_viewport = False
@@ -144,7 +144,7 @@ class Focus(bpy.types.Operator):
 
                 # disable mirror mods and store these unmirrored objects
                 if self.unmirror:
-                    mirrored = [(obj, mod) for obj in sel for mod in obj.modifiers if mod.type == "MIRROR"]
+                    mirrored = [(obj, mod) for obj in sel for mod in obj.modifiers if mod.type == "MIRROR" and mod.show_viewport and mod.mirror_object]
 
                     for obj, mod in mirrored:
                         if mod.show_viewport:
