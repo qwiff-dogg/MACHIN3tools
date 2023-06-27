@@ -29,7 +29,14 @@ class DrawLabel(bpy.types.Operator):
         draw_label(context, title=self.text, coords=self.coords, center=self.center, color=self.color, alpha=alpha)
 
     def modal(self, context, event):
-        context.area.tag_redraw()
+        if context.area:
+            context.area.tag_redraw()
+
+        # finish if the area is None, this happens when you draw but switch the workspace (via MACHIN3tools worksapce pie only?)
+        else:
+            self.finish(context)
+            return {'FINISHED'}
+
 
         # FINISH when countdown is 0
 
@@ -94,7 +101,14 @@ class DrawLabels(bpy.types.Operator):
             draw_label(context, title=self.text2, coords=Vector(self.coords) + Vector((0, scale * -15)), center=self.center, color=self.color2, alpha=alpha * 2)
 
     def modal(self, context, event):
-        context.area.tag_redraw()
+        if context.area:
+            context.area.tag_redraw()
+
+        # finish if the area is None, this happens when you draw but switch the workspace (via MACHIN3tools worksapce pie only?)
+        else:
+            self.finish(context)
+            return {'FINISHED'}
+
 
         # FINISH when countdown is 0
 
