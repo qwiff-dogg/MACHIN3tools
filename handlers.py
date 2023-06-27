@@ -7,6 +7,7 @@ from . utils.group import update_group_name, select_group_children
 from . utils.light import adjust_lights_for_rendering, get_area_light_poll
 from . utils.view import sync_light_visibility
 from . utils.system import get_temp_dir
+from . utils.workspace import get_3dview_area, get_3dview_space
 
 import time
 
@@ -30,46 +31,66 @@ def update_msgbus(none):
 def update_group(none):
     context = bpy.context
 
-    if context.mode == 'OBJECT':
 
-        # avoid AttributeError: 'Context' object has no attribute 'active_object'
-        active = context.active_object if getattr(context, 'active_object', None) and context.active_object.M3.is_group_empty and context.active_object.select_get() else None
+    # NOTE: check if you are in material or rendered view using the real time compositor
+    # blender will crash then, when setting any of the group object props, see https://blenderartists.org/t/machin3tools/1135716/1164?u=machin3
+    # this check, will simply not do any of the object changes when real time comp is detected in material or rendered shading
+    # TODO: investiate if doing the object level changes works, when you do them via an operator called from the handler
+    # TODO: same for the join op context override crash reported by kushiro
 
+    area = get_3dview_area(context)
 
-        # AUTO SELECT
+    if area:
+        space = get_3dview_space(area)
 
-        if context.scene.M3.group_select and active:
-            select_group_children(context.view_layer, active, recursive=context.scene.M3.group_recursive_select)
-
-
-        # STORE USER-SET EMPTY SIZE
-
-        if active:
-            # without this you can't actually set a new empty size, because it would be immediately reset to the stored value, if group_hide is enabled
-            if round(active.empty_display_size, 4) != 0.0001 and active.empty_display_size != active.M3.group_size:
-                active.M3.group_size = active.empty_display_size
+        if space:
+            if space.shading.type in ['MATERIAL', 'RENDERED'] and space.shading.use_compositor in ['CAMERA', 'ALWAYS']:
+                return
 
 
-        # HIDE / UNHIDE
+        print("executing normally")
 
-        if context.scene.M3.group_hide and getattr(context, 'visible_objects', None):
-            selected = [obj for obj in context.visible_objects if obj.M3.is_group_empty and obj.select_get()]
-            unselected = [obj for obj in context.visible_objects if obj.M3.is_group_empty and not obj.select_get()]
+        # only actually execute any of the group stuff, if there is a 3d view, since we know that already
+        if context.mode == 'OBJECT':
 
-            if selected:
-                for group in selected:
-                    group.show_name = True
-                    group.empty_display_size = group.M3.group_size
+            # avoid AttributeError: 'Context' object has no attribute 'active_object'
+            active = context.active_object if getattr(context, 'active_object', None) and context.active_object.M3.is_group_empty and context.active_object.select_get() else None
 
-            if unselected:
-                for group in unselected:
-                    group.show_name = False
 
-                    # store existing non-zero size
-                    if round(group.empty_display_size, 4) != 0.0001:
-                        group.M3.group_size = group.empty_display_size
+            # AUTO SELECT
 
-                    group.empty_display_size = 0.0001
+            if context.scene.M3.group_select and active:
+                select_group_children(context.view_layer, active, recursive=context.scene.M3.group_recursive_select)
+
+
+            # STORE USER-SET EMPTY SIZE
+
+            if active:
+                # without this you can't actually set a new empty size, because it would be immediately reset to the stored value, if group_hide is enabled
+                if round(active.empty_display_size, 4) != 0.0001 and active.empty_display_size != active.M3.group_size:
+                    active.M3.group_size = active.empty_display_size
+
+
+            # HIDE / UNHIDE
+
+            if context.scene.M3.group_hide and getattr(context, 'visible_objects', None):
+                selected = [obj for obj in context.visible_objects if obj.M3.is_group_empty and obj.select_get()]
+                unselected = [obj for obj in context.visible_objects if obj.M3.is_group_empty and not obj.select_get()]
+
+                if selected:
+                    for group in selected:
+                        group.show_name = True
+                        group.empty_display_size = group.M3.group_size
+
+                if unselected:
+                    for group in unselected:
+                        group.show_name = False
+
+                        # store existing non-zero size
+                        if round(group.empty_display_size, 4) != 0.0001:
+                            group.M3.group_size = group.empty_display_size
+
+                        group.empty_display_size = 0.0001
 
 
 @persistent
