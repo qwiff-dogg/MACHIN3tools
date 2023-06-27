@@ -71,7 +71,7 @@ class MaterialPicker(bpy.types.Operator):
         draw_init(self, None)
 
         title, color = ("Assign from Asset Browser ", green) if self.assign_from_assetbrowser else ("Assign", yellow) if self.assign else ("Pick", white)
-        dims = draw_label(context, title=title, coords=Vector((self.HUD_x, self.HUD_y)), color=color, center=False, return_dimensions=True)
+        dims = draw_label(context, title=title, coords=Vector((self.HUD_x, self.HUD_y)), color=color, center=False)
 
         if self.assign_from_assetbrowser:
 
@@ -80,12 +80,12 @@ class MaterialPicker(bpy.types.Operator):
                 draw_label(context, title=self.asset['error'], coords=Vector((self.HUD_x, self.HUD_y)), offset=self.offset, center=False, color=red, alpha=1)
 
             else:
-                draw_label(context, title=self.asset['import_type'], coords=Vector((self.HUD_x + dims[0], self.HUD_y)), center=False, color=white, alpha=0.5, return_dimensions=True)
+                draw_label(context, title=self.asset['import_type'], coords=Vector((self.HUD_x + dims[0], self.HUD_y)), center=False, color=white, alpha=0.5)
 
                 self.offset += 18
 
                 title = f"{self.asset['library']} • {self.asset['blend_name']} • "
-                dims = draw_label(context, title=title, coords=Vector((self.HUD_x, self.HUD_y)), offset=self.offset, center=False, color=white, alpha=0.5, return_dimensions=True)
+                dims = draw_label(context, title=title, coords=Vector((self.HUD_x, self.HUD_y)), offset=self.offset, center=False, color=white, alpha=0.5)
 
                 title = f"{self.asset['material_name']}"
                 draw_label(context, title=title, coords=Vector((self.HUD_x + dims[0], self.HUD_y)), offset=self.offset, center=False, color=white)
@@ -95,7 +95,7 @@ class MaterialPicker(bpy.types.Operator):
 
             color = red if self.pick_material_name == 'None' else white
 
-            dims = draw_label(context, title='Material ', coords=Vector((self.HUD_x, self.HUD_y)), offset=self.offset, center=False, color=white, alpha=0.5, return_dimensions=True)
+            dims = draw_label(context, title='Material ', coords=Vector((self.HUD_x, self.HUD_y)), offset=self.offset, center=False, color=white, alpha=0.5)
             draw_label(context, title=self.pick_material_name, coords=Vector((self.HUD_x + dims[0], self.HUD_y)), offset=self.offset, center=False, color=color, alpha=1)
 
     def modal(self, context, event):
