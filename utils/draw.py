@@ -498,7 +498,7 @@ def draw_axes_HUD(context, objects):
         size = m3.draw_axes_size
         alpha = m3.draw_axes_alpha - 0.001
         screenspace = m3.draw_axes_screenspace
-        ui_scale = context.preferences.view.ui_scale
+        ui_scale = context.preferences.system.ui_scale
 
         show_cursor = context.space_data.overlay.show_cursor
         show_hyper_cursor = hypercursor and get_active_tool(context).idname in ['machin3.tool_hyper_cursor', 'machin3.tool_hyper_cursor_simple'] and context.scene.HC.show_gizmos
@@ -606,7 +606,7 @@ def draw_focus_HUD(context, color=(1, 1, 1), alpha=1, width=2):
 
             # draw title
 
-            scale = context.preferences.view.ui_scale * get_prefs().HUD_scale
+            scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
             offset = 4
 
             # add additional offset if necessary
@@ -621,9 +621,11 @@ def draw_focus_HUD(context, color=(1, 1, 1), alpha=1, width=2):
             font = 1
             fontsize = int(12 * scale)
 
+            dims = blf.dimensions(font, title)
+
             blf.size(font, fontsize, 72)
             blf.color(font, *color, alpha)
-            blf.position(font, center - int(60 * scale), region.height - offset - int(fontsize), 0)
+            blf.position(font, center - (dims[0] / 2), region.height - offset - fontsize, 0)
 
             blf.draw(font, title)
 
@@ -632,7 +634,7 @@ def draw_surface_slide_HUD(context, color=(1, 1, 1), alpha=1, width=2):
     if context.space_data.overlay.show_overlays:
         region = context.region
 
-        scale = context.preferences.view.ui_scale * get_prefs().HUD_scale
+        scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
         offset = 0
 
         if require_header_offset(context, top=False):
@@ -657,7 +659,7 @@ def draw_screen_cast_HUD(context):
     operators = get_last_operators(context, debug=False)[-p.screencast_operator_count:]
 
     font = 0
-    scale = context.preferences.view.ui_scale * get_prefs().HUD_scale
+    scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
 
     # initiate the horizontal offset based on the presence of the tools bar
     tools = [r for r in context.area.regions if r.type == 'TOOLS']

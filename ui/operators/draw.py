@@ -93,7 +93,7 @@ class DrawLabels(bpy.types.Operator):
 
     def draw_HUD(self, context):
         alpha = get_timer_progress(self) * self.alpha
-        scale = context.preferences.view.ui_scale * get_prefs().HUD_scale
+        scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
 
         draw_label(context, title=self.text, coords=self.coords, center=self.center, color=self.color, alpha=alpha)
 

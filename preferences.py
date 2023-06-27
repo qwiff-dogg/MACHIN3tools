@@ -480,9 +480,9 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
 
     # HUD
 
-    HUD_scale: FloatProperty(name="HUD Scale", description="Scale of HUD elements", default=1, min=0.1)
-
+    modal_hud_scale: FloatProperty(name="HUD Scale", description="Scale of HUD elements", default=1, min=0.1)
     modal_hud_timeout: FloatProperty(name="HUD timeout", description="Global Timeout Modulation (not exposed in MACHIN3tools)", default=1, min=0.1)
+
     HUD_fade_clean_up: FloatProperty(name="Clean Up HUD Fade Time (seconds)", default=1, min=0.1)
     HUD_fade_clipping_toggle: FloatProperty(name="Clipping Toggle HUD Fade Time (seconds)", default=1, min=0.1)
     HUD_fade_group: FloatProperty(name="Group HUD Fade Time (seconds)", default=1, min=0.1)
@@ -721,7 +721,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
             column = bb.column()
             row = column.row()
             r = row.split(factor=0.2)
-            r.prop(self, "HUD_scale", text="")
+            r.prop(self, "modal_hud_scale", text="")
             r.label(text="HUD Scale")
 
             if getattr(bpy.types, "MACHIN3_OT_mirror", False):

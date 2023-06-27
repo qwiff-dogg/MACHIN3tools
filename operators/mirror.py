@@ -170,9 +170,6 @@ class Mirror(bpy.types.Operator):
 
     def draw_HUD(self, context):
         if not self.passthrough:
-            # draw_point(self.init_mouse, color=(1, 1, 1), size=4)
-            # draw_point(self.mousepos, color=(0, 1, 0))
-
             draw_vector(self.flick_vector, origin=self.init_mouse, alpha=1)
 
             color = red if self.remove else white
@@ -181,22 +178,22 @@ class Mirror(bpy.types.Operator):
 
             title = 'Remove' if self.remove else 'Mirror'
             alpha = 1 if self.remove else 0.8
-            draw_label(context, title=title, coords=(self.init_mouse[0], self.init_mouse[1] + self.flick_distance - (30 * self.scale)), center=True, color=color, alpha=alpha)
+            draw_label(context, title=title, coords=(self.init_mouse[0], self.init_mouse[1] + self.flick_distance - (15 * self.scale)), center=True, color=color, alpha=alpha)
+
 
             if self.remove and self.misaligned and self.use_misalign:
                 name = 'Cursor Empty' if self.use_misalign and self.mirror_obj.type == 'EMPTY' else self.mirror_obj.name if self.use_misalign else 'None'
                 alpha = 1 if self.use_misalign else 0.3
                 color = blue if self.use_misalign and self.mirror_obj.type == 'EMPTY' else yellow if self.use_misalign else white
 
-                # draw_label(context, title=f"misaligned: {name}", coords=(self.init_mouse[0], self.init_mouse[1] + self.flick_distance - (45 * self.scale)), center=True, color=color, alpha=alpha)
-                draw_label(context, title=name, coords=(self.init_mouse[0], self.init_mouse[1] - self.flick_distance + (15 * self.scale)), center=True, color=color, alpha=alpha)
+                draw_label(context, title=name, coords=(self.init_mouse[0], self.init_mouse[1] - self.flick_distance + (30 * self.scale)), center=True, color=color, alpha=alpha)
 
             elif not self.remove and self.cursor or len(self.sel) > 1:
                     title, color = ('New Cursor', green) if self.cursor and not self.use_existing_cursor else ('Existing Cursor', blue) if self.cursor else (self.active.name, yellow)
-                    draw_label(context, title=title, coords=(self.init_mouse[0], self.init_mouse[1] - self.flick_distance + (15 * self.scale)), center=True, alpha=1, color=color)
+                    draw_label(context, title=title, coords=(self.init_mouse[0], self.init_mouse[1] - self.flick_distance + (30 * self.scale)), center=True, alpha=1, color=color)
 
             title = self.flick_direction.split('_')[1] if self.remove else self.flick_direction.replace('_', ' ').title()
-            draw_label(context, title=title, coords=(self.init_mouse[0], self.init_mouse[1] - self.flick_distance), center=True, alpha=0.4)
+            draw_label(context, title=title, coords=(self.init_mouse[0], self.init_mouse[1] - self.flick_distance + (15 * self.scale)), center=True, alpha=0.4)
 
 
         # draw chosen misaligned mirror obj (cant be drawn when passing through, as we cant update the cursor location then)
@@ -422,7 +419,7 @@ class Mirror(bpy.types.Operator):
             self.cmx = scene.cursor.matrix
 
             # initialize
-            self.scale = context.preferences.view.ui_scale * get_prefs().HUD_scale
+            self.scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
             self.flick_distance = get_prefs().mirror_flick_distance * self.scale
 
             self.mirror_obj = None

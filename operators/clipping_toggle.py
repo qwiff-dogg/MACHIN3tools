@@ -133,7 +133,7 @@ class ClippingToggle(bpy.types.Operator):
 
             view = bpy.context.space_data
 
-            scale = context.preferences.view.ui_scale * get_prefs().HUD_scale
+            scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
             center_offset = 100 * scale
 
             coords = ((context.region.width / 2) - (center_offset if self.state == 'MIN' else 0 if self.state == 'MED' else - center_offset), 100)
