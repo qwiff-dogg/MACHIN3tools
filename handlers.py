@@ -47,9 +47,6 @@ def update_group(none):
             if space.shading.type in ['MATERIAL', 'RENDERED'] and space.shading.use_compositor in ['CAMERA', 'ALWAYS']:
                 return
 
-
-        print("executing normally")
-
         # only actually execute any of the group stuff, if there is a 3d view, since we know that already
         if context.mode == 'OBJECT':
 
