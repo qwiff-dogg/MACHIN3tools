@@ -197,15 +197,18 @@ class CleanUp(bpy.types.Operator):
     def delete_loose_geometry(self, bm):
         if self.delete_loose_verts:
             loose_verts = [v for v in bm.verts if not v.link_edges]
-            bmesh.ops.delete(bm, geom=loose_verts, context="VERTS")
+            if loose_verts:
+                bmesh.ops.delete(bm, geom=loose_verts, context="VERTS")
 
         if self.delete_loose_edges:
             loose_edges = [e for e in bm.edges if not e.link_faces]
-            bmesh.ops.delete(bm, geom=loose_edges, context="EDGES")
+            if loose_edges:
+                bmesh.ops.delete(bm, geom=loose_edges, context="EDGES")
 
         if self.delete_loose_faces:
             loose_faces = [f for f in bm.faces if all([not e.is_manifold for e in f.edges])]
-            bmesh.ops.delete(bm, geom=loose_faces, context="FACES")
+            if loose_faces:
+                bmesh.ops.delete(bm, geom=loose_faces, context="FACES")
 
     def dissolve_redundant_geometry(self, bm):
         '''
