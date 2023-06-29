@@ -401,23 +401,23 @@ class MaterialPicker(bpy.types.Operator):
 
                     else:
                         msg = f".blend file does not exist: {os.path.join(libpath, blendname)}"
-                        print("WARNING:", msg)
+                        # print("WARNING:", msg)
                         asset = {'error': msg}
 
 
                 else:
                     msg = "No material selected in asset browser!"
-                    print("WARNING:", msg)
+                    # print("WARNING:", msg)
                     asset = {'error': msg}
 
             else:
                 msg = "LOCAL or unsupported library chosen!"
-                print("WARNING:", msg)
+                # print("WARNING:", msg)
                 asset = {'error': msg}
 
         else:
             msg = "There is no asset browser in this workspace"
-            print("WARNING:", msg)
+            # print("WARNING:", msg)
             asset = {'error': msg}
 
 
