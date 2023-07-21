@@ -1603,18 +1603,20 @@ class PieShading(Menu):
 
             column = layout.column(align=True)
 
-            row = column.row(align=True)
-            row.prop(m3, 'use_bevel_shader')
+            split = column.split(factor=0.4, align=True)
+            split.prop(m3, 'use_bevel_shader')
 
-            r = row.row(align=True)
-            r.active = m3.use_bevel_shader
-            r.prop(m3, 'bevel_shader_samples')
-            r.prop(m3, 'bevel_shader_radius')
+            row = split.row(align=True)
+            row.active = m3.use_bevel_shader
+            row.prop(m3, 'bevel_shader_use_dimensions', text="", icon='FULLSCREEN_ENTER')
+            row.prop(m3, 'bevel_shader_samples')
+            row.prop(m3, 'bevel_shader_radius')
 
             if active:
                 row = column.row(align=True)
                 row.active = m3.use_bevel_shader
-                row.prop(active.M3, 'bevel_shader_radius_mod')
+                row.prop(active.M3, 'bevel_shader_radius_mod', text="Active Object Factor")
+
 
     def draw_light_adjust_box(self, context, m3, layout):
         column = layout.column(align=True)
