@@ -1,5 +1,7 @@
 import bpy
+from mathutils import Vector
 from . registration import get_addon
+from . math import get_sca_matrix
 from . mesh import get_bbox
 
 
@@ -104,7 +106,17 @@ def adjust_bevel_shader(context, debug=False):
 
                 # get dimensions from non-evaluated mesh(as mirror mods massivele change the dims!)
                 if obj.type == 'MESH':
-                    maxdim = max(get_bbox(obj.data)[2])
+                    # print(obj.name)
+
+                    # get mesh dimensios as vector
+                    dims = Vector(get_bbox(obj.data)[2])
+
+                    # get scalemx
+                    scalemx = get_sca_matrix(obj.matrix_world.to_scale())
+                    
+                    # get the maxdims by getting the length of the scalemx @ dis vector
+                    maxdim = (scalemx @ dims).length
+                    # print(maxdim)
                 
                 # fall back to obj.dims for non-mesh objects
                 else:
