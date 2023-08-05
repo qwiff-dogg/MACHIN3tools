@@ -2239,8 +2239,8 @@ class PieCursor(Menu):
 
                 row = column.split(factor=0.5, align=True)
                 row.scale_y = 1.5
-                row.operator("machin3.origin_to_cursor", text="to Cursor", icon="LAYER_ACTIVE")
                 row.operator("object.origin_set", text="to Geometry", icon="MESH_DATA").type = "ORIGIN_GEOMETRY"
+                row.operator("machin3.origin_to_cursor", text="to Cursor", icon="LAYER_ACTIVE")
 
                 row = column.split(factor=0.5, align=True)
                 row.scale_y = 1.5
@@ -2260,8 +2260,8 @@ class PieCursor(Menu):
 
                     row = column.row(align=True)
                     row.scale_y = 1.5
-                    row.operator("machin3.origin_to_cursor", text="to Cursor", icon='LAYER_ACTIVE')
                     row.operator("machin3.origin_to_active", text="to %s" % (sel), icon=icon)
+                    row.operator("machin3.origin_to_cursor", text="to Cursor", icon='LAYER_ACTIVE')
 
                 else:
 
