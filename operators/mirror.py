@@ -228,6 +228,7 @@ class Mirror(bpy.types.Operator):
 
             elif self.mirror_obj.type == 'EMPTY':
                 # get cursor's local space location haha
+                # WHY? because based on a single location you create the cross points (in local space), and the afterwards apply the matrix transform
                 loc = mx.inverted_safe() @ mx.to_translation()
                 draw_cross_3d(loc, mx=mx, color=blue, width=2 * self.scale, length=2 * self.cursor_empty_zoom, alpha=1)
 
