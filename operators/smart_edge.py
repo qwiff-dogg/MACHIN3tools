@@ -29,7 +29,7 @@ class SmartEdge(bpy.types.Operator):
 
     is_knife_projectable: BoolProperty(name="Can be Knife Projected", default=False)
     is_knife_project: BoolProperty(name="Is Knife Project", default=False)
-    cut_through: BoolProperty(name="Cut Trough", default=False)
+    cut_through: BoolProperty(name="Cut Through", default=False)
 
     select_mode: EnumProperty(name="Select Mode", items=smartedge_select_mode_items, default='BOUNDS')
 
