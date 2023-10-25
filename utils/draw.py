@@ -46,7 +46,7 @@ def draw_points(coords, indices=None, mx=Matrix(), color=(1, 1, 1), size=6, alph
         gpu.state.depth_test_set('NONE' if xray else 'LESS_EQUAL')
         gpu.state.blend_set('ALPHA' if alpha < 1 else 'NONE')
         gpu.state.point_size_set(size)
-#
+
         if indices:
             if mx != Matrix():
                 batch = batch_for_shader(shader, 'POINTS', {"pos": [mx @ co for co in coords]}, indices=indices)
@@ -488,17 +488,17 @@ hypercursor = None
 def draw_axes_HUD(context, objects):
     global hypercursor
     
-    if not hypercursor:
+    if hypercursor is None:
         hypercursor = get_addon('HyperCursor')[0]
-
 
     if context.space_data.overlay.show_overlays:
         m3 = context.scene.M3
 
         size = m3.draw_axes_size
-        alpha = m3.draw_axes_alpha - 0.001
+        alpha = m3.draw_axes_alpha
+
         screenspace = m3.draw_axes_screenspace
-        ui_scale = context.preferences.system.ui_scale
+        scale = context.preferences.system.ui_scale
 
         show_cursor = context.space_data.overlay.show_cursor
         show_hyper_cursor = hypercursor and get_active_tool(context).idname in ['machin3.tool_hyper_cursor', 'machin3.tool_hyper_cursor_simple'] and context.scene.HC.show_gizmos
@@ -518,31 +518,33 @@ def draw_axes_HUD(context, objects):
                     # only show the cursor axes when the hyper cursor gizmo isn't shown
                     if not show_hyper_cursor:
                         mx = context.scene.cursor.matrix
-                        origin = mx.decompose()[0]
+                        rot = mx.to_quaternion()
+                        origin = mx.to_translation()
 
                         factor = get_zoom_factor(context, origin, scale=300, ignore_obj_scale=True) if screenspace else 1
 
                         if show_cursor and screenspace:
-                            coords.append(origin + (mx.to_3x3() @ axis).normalized() * 0.1 * ui_scale * factor * 0.8)
-                            coords.append(origin + (mx.to_3x3() @ axis).normalized() * 0.1 * ui_scale * factor * 1.2)
+                            coords.append(origin + (rot @ axis).normalized() * 0.1 * scale * factor * 0.8)
+                            coords.append(origin + (rot @ axis).normalized() * 0.1 * scale * factor * 1.2)
 
                         else:
-                            coords.append(origin + (mx.to_3x3() @ axis).normalized() * size * ui_scale * factor * 0.9)
-                            coords.append(origin + (mx.to_3x3() @ axis).normalized() * size * ui_scale * factor)
+                            coords.append(origin + (rot @ axis).normalized() * size * scale * factor * 0.9)
+                            coords.append(origin + (rot @ axis).normalized() * size * scale * factor)
 
-                            coords.append(origin + (mx.to_3x3() @ axis).normalized() * size * ui_scale * factor * 0.1)
-                            coords.append(origin + (mx.to_3x3() @ axis).normalized() * size * ui_scale * factor * 0.7)
+                            coords.append(origin + (rot @ axis).normalized() * size * scale * factor * 0.1)
+                            coords.append(origin + (rot @ axis).normalized() * size * scale * factor * 0.7)
 
                 # OBJECT
 
                 elif str(obj) != '<bpy_struct, Object invalid>':
                     mx = obj.matrix_world
-                    origin = mx.decompose()[0]
+                    rot = mx.to_quaternion()
+                    origin = mx.to_translation()
 
                     factor = get_zoom_factor(context, origin, scale=300, ignore_obj_scale=True) if screenspace else 1
 
-                    coords.append(origin + (mx.to_3x3() @ axis).normalized() * size * ui_scale * factor * 0.1)
-                    coords.append(origin + (mx.to_3x3() @ axis).normalized() * size * ui_scale * factor)
+                    coords.append(origin + (rot @ axis).normalized() * size * scale * factor * 0.1)
+                    coords.append(origin + (rot @ axis).normalized() * size * scale * factor)
 
                     """
                     # debuging stash + stashtargtmx for object origin changes
