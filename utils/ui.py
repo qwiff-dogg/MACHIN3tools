@@ -107,8 +107,17 @@ def get_zoom_factor(context, depth_location, scale=10, ignore_obj_scale=False):
     center = Vector((context.region.width / 2, context.region.height / 2))
     offset = center + Vector((scale, 0))
 
-    center_3d = region_2d_to_location_3d(context.region, context.region_data, center, depth_location)
-    offset_3d = region_2d_to_location_3d(context.region, context.region_data, offset, depth_location)
+    # NOTE: this can through an exception in some rare cases
+    #   File "/opt/blender-3.6.2-linux-x64/3.6/scripts/modules/bpy_extras/view3d_utils.py", line 127, in region_2d_to_location_3d
+    # coord_vec = region_2d_to_vector_3d(region, rv3d, coord)
+    # File "/opt/blender-3.6.2-linux-x64/3.6/scripts/modules/bpy_extras/view3d_utils.py", line 30, in region_2d_to_vector_3d
+    # persinv = rv3d.perspective_matrix.inverted()
+    try:
+        center_3d = region_2d_to_location_3d(context.region, context.region_data, center, depth_location)
+        offset_3d = region_2d_to_location_3d(context.region, context.region_data, offset, depth_location)
+    except:
+        print("exception!")
+        return 1
 
     # draw_point(center_3d, color=(1, 1, 0), modal=False)
     # draw_point(offset_3d, color=(1, 0, 0), modal=False)
