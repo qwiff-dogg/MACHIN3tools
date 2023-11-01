@@ -12,11 +12,24 @@ from . tools import get_active_tool
 from .. colors import red, green, blue, black, white
 
 
+# UTILS
+
+def get_builtin_shader_name(name):
+    '''
+    see https://projects.blender.org/blender/blender/commit/9a8fd2f1ddb491892297315a4f76b6ed2b0c1b94
+    '''
+    
+    if bpy.app.version >= (4, 0, 0):
+        return name
+    else:
+        return f"3D_{name}"
+
+
 # BASIC
 
 def draw_point(co, mx=Matrix(), color=(1, 1, 1), size=6, alpha=1, xray=True, modal=True, screen=False):
     def draw():
-        shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+        shader = gpu.shader.from_builtin(get_builtin_shader_name('UNIFORM_COLOR'))
         shader.bind()
         shader.uniform_float("color", (*color, alpha))
 
@@ -39,7 +52,7 @@ def draw_point(co, mx=Matrix(), color=(1, 1, 1), size=6, alpha=1, xray=True, mod
 
 def draw_points(coords, indices=None, mx=Matrix(), color=(1, 1, 1), size=6, alpha=1, xray=True, modal=True, screen=False):
     def draw():
-        shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+        shader = gpu.shader.from_builtin(get_builtin_shader_name('UNIFORM_COLOR'))
         shader.bind()
         shader.uniform_float("color", (*color, alpha))
 
@@ -325,7 +338,7 @@ def draw_tris(coords, indices=None, mx=Matrix(), color=(1, 1, 1), alpha=1, xray=
         # if not indices:
             # indices = [(i, i + 1) for i in range(0, len(coords), 2)]
 
-        shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+        shader = gpu.shader.from_builtin(get_builtin_shader_name('UNIFORM_COLOR'))
         shader.bind()
         shader.uniform_float("color", (*color, alpha))
 
@@ -466,7 +479,7 @@ def draw_label(context, title='', coords=None, offset=0, center=True, size=12, c
     font = 1
     fontsize = int(size * scale)
 
-    blf.size(font, fontsize, 72)
+    blf.size(font, fontsize)
     blf.color(font, *color, alpha)
 
     if center:
@@ -625,7 +638,7 @@ def draw_focus_HUD(context, color=(1, 1, 1), alpha=1, width=2):
 
             dims = blf.dimensions(font, title)
 
-            blf.size(font, fontsize, 72)
+            blf.size(font, fontsize)
             blf.color(font, *color, alpha)
             blf.position(font, center - (dims[0] / 2), region.height - offset - fontsize, 0)
 
@@ -647,7 +660,7 @@ def draw_surface_slide_HUD(context, color=(1, 1, 1), alpha=1, width=2):
         font = 1
         fontsize = int(12 * scale)
 
-        blf.size(font, fontsize, 72)
+        blf.size(font, fontsize)
         blf.color(font, *color, alpha)
         blf.position(font, (region.width / 2) - int(60 * scale), 0 + offset + int(fontsize), 0)
 
@@ -679,7 +692,7 @@ def draw_screen_cast_HUD(context):
 
     # get addon prefix offset, based on widest possiblestring 'MM', and based on empasized last op's size
     if p.screencast_show_addon:
-        blf.size(font, round(p.screencast_fontsize * scale * emphasize), 72)
+        blf.size(font, round(p.screencast_fontsize * scale * emphasize))
         addon_offset_x = blf.dimensions(font, 'MM')[0]
     else:
         addon_offset_x = 0
@@ -709,7 +722,7 @@ def draw_screen_cast_HUD(context):
         x = offset_x + addon_offset_x
         y = offset_y * scale if idx == 0 else y + (blf.dimensions(font, text)[1] + vgap)
 
-        blf.size(font, size, 72)
+        blf.size(font, size)
         blf.color(font, *color, alpha)
         blf.position(font, x, y, 0)
 
@@ -721,14 +734,14 @@ def draw_screen_cast_HUD(context):
         if p.screencast_show_idname:
             x += blf.dimensions(font, text)[0] + hgap
 
-            blf.size(font, size - 2, 72)
+            blf.size(font, size - 2)
             blf.color(font, *color, alpha * 0.3)
             blf.position(font, x, y, 0)
 
             blf.draw(font, f"{idname}")
 
             # reset size
-            blf.size(font, size, 72)
+            blf.size(font, size)
 
 
         # diable shadowing, we don't want to use it for the addon prefix or for the other ops
@@ -739,7 +752,7 @@ def draw_screen_cast_HUD(context):
         # addon prefix
 
         if addon and p.screencast_show_addon:
-            blf.size(font, size, 72)
+            blf.size(font, size)
 
             x = offset_x + addon_offset_x - blf.dimensions(font, addon)[0] - (hgap / 2)
 
