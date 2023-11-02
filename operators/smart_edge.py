@@ -4,6 +4,7 @@ import bmesh
 from .. items import bridge_interpolation_items, smartedge_sharp_mode_items, smartedge_select_mode_items
 from .. utils.modifier import add_bevel
 from .. utils.ui import popup_message
+from .. utils.bmesh import ensure_custom_data_layers
 
 
 # TODO: why does bridging require custom props on this op, that are passe through, but bevel or offset edges doesn't???
@@ -131,7 +132,7 @@ class SmartEdge(bpy.types.Operator):
         bm.normal_update()
         bm.verts.ensure_lookup_table()
 
-        bw = bm.edges.layers.bevel_weight.verify()
+        bw = ensure_custom_data_layers(bm)[1]
 
         verts = [v for v in bm.verts if v.select]
         faces = [f for f in bm.faces if f.select]
