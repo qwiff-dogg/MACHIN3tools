@@ -3,7 +3,10 @@ from bpy.props import StringProperty, BoolProperty
 import os
 from .. utils.system import abspath, open_folder
 from .. utils.property import step_list
-from .. utils.asset import get_asset_library_reference, set_asset_library_reference, get_asset_import_method, set_asset_import_method, get_asset_details_from_space
+from .. utils.asset import get_asset_library_reference, set_asset_library_reference, get_asset_import_method, set_asset_import_method, get_asset_details_from_space, get_asset_ids
+from .. utils.workspace import get_window_region_from_area, get_3dview_area
+from .. utils.registration import get_prefs
+from .. colors import red
 
 
 class Open(bpy.types.Operator):
@@ -25,9 +28,28 @@ class Open(bpy.types.Operator):
         directory = abspath(params.directory.decode())
         active_file = context.active_file
 
+        active, id_type, local_id = get_asset_ids(context)
+
         if self.blend_file:
             if active_file.asset_data:
-                bpy.ops.asset.open_containing_blend_file()
+
+                if not get_asset_ids(context)[2]:
+                    bpy.ops.asset.open_containing_blend_file()
+
+                else:
+
+
+                    area = get_3dview_area(context)
+
+                    if area:
+                        region, region_data = get_window_region_from_area(area)
+                        print(area, region, region_data)
+
+                        with context.temp_override(area=area, region=region, region_data=region_data):
+                            scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
+                            coords = (context.region.width / 2, 100 * scale)
+                            bpy.ops.machin3.draw_label(text="The blend file containing this asset is already open.", coords=coords, color=red, alpha=1, time=5)
+
 
             else:
                 path = os.path.join(directory, active_file.relative_path)

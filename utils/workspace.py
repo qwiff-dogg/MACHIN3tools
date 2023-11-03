@@ -13,3 +13,9 @@ def get_3dview_space(area):
     for space in area.spaces:
         if space.type == 'VIEW_3D':
             return space
+
+
+def get_window_region_from_area(area):
+    for region in area.regions:
+        if region.type == 'WINDOW':
+            return region, region.data

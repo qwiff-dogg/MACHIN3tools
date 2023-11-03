@@ -34,6 +34,16 @@ def set_asset_import_method(params, name):
         params.import_type = name
 
 
+def get_asset_ids(context):
+    if bpy.app.version >= (4, 0, 0):
+        active = context.asset
+
+    else:
+        active = context.active_file
+
+    return active, active.id_type, active.local_id
+
+
 # CATALOGS
 
 def get_catalogs_from_asset_libraries(context, debug=False):
