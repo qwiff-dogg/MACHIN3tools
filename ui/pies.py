@@ -2592,7 +2592,7 @@ class PieCollections(Menu):
 
         # 2 - BOTTOM
         if sel:
-            pie.operator("object.move_to_collection", text="Move to", icon="ADD")
+            pie.operator("object.move_to_collection", text="Move to", icon="FORWARD")
 
         else:
             pie.operator("machin3.create_collection", text="Create", icon="GROUP")
