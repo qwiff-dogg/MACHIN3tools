@@ -169,6 +169,7 @@ class CreateAssemblyAsset(bpy.types.Operator):
 
                 # with context.temp_override(id=instance):
                 #     bpy.ops.ed.lib_id_generate_preview(filepath=thumbpath)
+
                 # NOTE: this just doesn'twork in 4.0 beta, complains about wrong context
                 # ####: I tried everything, passing in assetbrowser area, space_data, region and region_data, incl an entire context object with these four replaced
                 # ####: I tried invoking a dedicated op like in HyperCursor with the assetbrowser area, non of it would work
@@ -177,7 +178,7 @@ class CreateAssemblyAsset(bpy.types.Operator):
                 # ####: but when creating said asset in the same go it wouldn't work
                 # ####: so I'm no diectly writing to the preview buffer, which takes a couple of seconds and a lot of CPU, but works without any stupid context overrides
 
-                # NOTE: it is not instance thx tothe [:] syntax, wow!
+                # NOTE: it is now instant thx to the [:] syntax, wow!
                 # ####: see https://blender.stackexchange.com/a/3678/33919
 
                 # load the rendered image, as th render result's pixels (and size) can't be accessed
