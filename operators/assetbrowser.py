@@ -167,13 +167,25 @@ class CreateAssemblyAsset(bpy.types.Operator):
                 thumbpath = os.path.join(get_path(), 'resources', 'thumb.png')
                 self.render_viewport(context, thumbpath)
 
-                # load the rendered images as 
+                # with context.temp_override(id=instance):
+                #     bpy.ops.ed.lib_id_generate_preview(filepath=thumbpath)
+                # NOTE: this just doesn'twork in 4.0 beta, complains about wrong context
+                # ####: I tried everything, passing in assetbrowser area, space_data, region and region_data, incl an entire context object with these four replaced
+                # ####: I tried invoking a dedicated op like in HyperCursor with the assetbrowser area, non of it would work
+                # ####: the second could have worked, but I then couldn't set the new asset as the active one
+                # ####: I could do that just fine for all existing assets though using assetbrowser space_data.activate_asset_from_id() or whatever it is called
+                # ####: but when creating said asset in the same go it wouldn't work
+                # ####: so I'm no diectly writing to the preview buffer, which takes a couple of seconds and a lot of CPU, but works without any stupid context overrides
+
+                # load the rendered image, as th render result's pixels (and size) can't be accessed
                 thumb = bpy.data.images.load(filepath=thumbpath)
 
+                # create the preview from the img object's pixels
                 instance.preview_ensure()
                 instance.preview.image_size = thumb.size
                 instance.preview.image_pixels_float = thumb.pixels
 
+                # remove the loade and rendered thumb, and remove the file from disk too
                 bpy.data.images.remove(thumb)
                 bpy.data.images.remove(bpy.data.images['Render Result'])
                 os.unlink(thumbpath)
