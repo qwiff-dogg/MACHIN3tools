@@ -177,13 +177,16 @@ class CreateAssemblyAsset(bpy.types.Operator):
                 # ####: but when creating said asset in the same go it wouldn't work
                 # ####: so I'm no diectly writing to the preview buffer, which takes a couple of seconds and a lot of CPU, but works without any stupid context overrides
 
+                # NOTE: it is not instance thx tothe [:] syntax, wow!
+                # ####: see https://blender.stackexchange.com/a/3678/33919
+
                 # load the rendered image, as th render result's pixels (and size) can't be accessed
                 thumb = bpy.data.images.load(filepath=thumbpath)
 
                 # create the preview from the img object's pixels
                 instance.preview_ensure()
                 instance.preview.image_size = thumb.size
-                instance.preview.image_pixels_float = thumb.pixels
+                instance.preview.image_pixels_float[:] = thumb.pixels  # CodeManX is a legend
 
                 # remove the loade and rendered thumb, and remove the file from disk too
                 bpy.data.images.remove(thumb)
