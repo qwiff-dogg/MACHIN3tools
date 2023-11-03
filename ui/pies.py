@@ -2572,7 +2572,6 @@ class PieCollections(Menu):
             dcol = bpy.data.collections.get(decalsname)
 
 
-
         layout = self.layout
         pie = layout.menu_pie()
 
@@ -2585,7 +2584,7 @@ class PieCollections(Menu):
 
         # 6 - RIGHT
         if sel:
-            pie.operator("machin3.add_to_collection", text="Add to", icon="ADD")
+            pie.operator("object.link_to_collection", text="Add to", icon="ADD")
 
         else:
             pie.separator()
@@ -2593,7 +2592,7 @@ class PieCollections(Menu):
 
         # 2 - BOTTOM
         if sel:
-            pie.operator("machin3.move_to_collection", text="Move to")
+            pie.operator("object.move_to_collection", text="Move to", icon="ADD")
 
         else:
             pie.operator("machin3.create_collection", text="Create", icon="GROUP")
