@@ -14,7 +14,7 @@ from .. colors import red, green, blue, black, white
 
 # UTILS
 
-def get_builtin_shader_name(name):
+def get_builtin_shader_name(name, prefix='3D'):
     '''
     see https://projects.blender.org/blender/blender/commit/9a8fd2f1ddb491892297315a4f76b6ed2b0c1b94
     '''
@@ -22,7 +22,7 @@ def get_builtin_shader_name(name):
     if bpy.app.version >= (4, 0, 0):
         return name
     else:
-        return f"3D_{name}"
+        return f"{prefix}_{name}"
 
 
 # BASIC
@@ -608,7 +608,7 @@ def draw_focus_HUD(context, color=(1, 1, 1), alpha=1, width=2):
             coords = [(width, width), (region.width - width, width), (region.width - width, region.height - width), (width, region.height - width)]
             indices =[(0, 1), (1, 2), (2, 3), (3, 0)]
 
-            shader = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
+            shader = gpu.shader.from_builtin(get_builtin_shader_name('UNIFORM_COLOR', '2D'))
             shader.bind()
             shader.uniform_float("color", (*color, alpha / 4))
 
