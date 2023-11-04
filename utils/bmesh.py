@@ -29,7 +29,7 @@ def ensure_custom_data_layers(bm, vertex_groups=True, bevel_weights=True, crease
         if crease:
             edge_crease_layer = bm.edges.layers.float.get('crease_edge')
 
-            if not edge_bw_layer:
+            if not edge_crease_layer:
                 edge_crease_layer = bm.edges.layers.float.new('crease_edge')
         else:
             edge_crease_layer = None
