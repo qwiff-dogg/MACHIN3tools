@@ -494,6 +494,31 @@ def draw_label(context, title='', coords=None, offset=0, center=True, size=12, c
     return blf.dimensions(font, title)
 
 
+# LAYOUT
+
+def draw_split_row(self, layout, prop='prop', text='', label='Label', factor=0.2, align=True, toggle=True, expand=True, info=None, warning=None):
+    '''
+    draw a split row for addon preferences, where the first split is the prop, and the second is a separate label
+    '''
+
+    row = layout.row(align=align)
+    split = row.split(factor=factor, align=align)
+    
+    text = text if text else str(getattr(self, prop)) if getattr(self, prop) in [True, False] else ''
+    split.prop(self, prop, text=text, toggle=toggle, expand=expand)
+
+    if label:
+        split.label(text=label)
+
+    if info:
+        split.label(text=info, icon='INFO')
+
+    if warning:
+        split.label(text=warning, icon='ERROR')
+
+    return row
+
+
 # AXES
 
 hypercursor = None

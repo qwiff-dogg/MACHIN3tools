@@ -82,7 +82,7 @@ if 'bpy' in locals():
 import bpy
 from bpy.props import PointerProperty, BoolProperty, EnumProperty
 from . properties import M3SceneProperties, M3ObjectProperties
-from . utils.registration import get_core, get_tools, get_pie_menus
+from . utils.registration import get_core, get_prefs, get_tools, get_pie_menus
 from . utils.registration import register_classes, unregister_classes, register_keymaps, unregister_keymaps, register_icons, unregister_icons, register_msgbus, unregister_msgbus
 from . ui.menus import object_context_menu, mesh_context_menu, add_object_buttons, material_pick_button, outliner_group_toggles, extrude_menu, group_origin_adjustment_toggle, render_menu, render_buttons
 from . handlers import focus_HUD, surface_slide_HUD, update_group, update_asset, update_msgbus, screencast_HUD, increase_lights_on_render_end, decrease_lights_on_render_start, axes_HUD, undo_save
@@ -155,13 +155,18 @@ def register():
 
     bpy.app.handlers.undo_pre.append(undo_save)
 
+
     # REGISTRATION OUTPUT
 
-    print(f"Registered {bl_info['name']} {'.'.join([str(i) for i in bl_info['version']])} with {tool_count} {'tool' if tool_count == 1 else 'tools'}, {pie_count} pie {'menu' if pie_count == 1 else 'menus'}")
+    if get_prefs().registration_debug:
+        print(f"Registered {bl_info['name']} {'.'.join([str(i) for i in bl_info['version']])} with {tool_count} {'tool' if tool_count == 1 else 'tools'}, {pie_count} pie {'menu' if pie_count == 1 else 'menus'}")
 
 
 def unregister():
     global classes, keymaps, icons, owner
+
+    debug = get_prefs().registration_debug
+
 
     # HANDLERS
 
@@ -231,4 +236,5 @@ def unregister():
 
     unregister_icons(icons)
 
-    print(f"Unregistered {bl_info['name']} {'.'.join([str(i) for i in bl_info['version']])}.")
+    if debug:
+        print(f"Unregistered {bl_info['name']} {'.'.join([str(i) for i in bl_info['version']])}.")
