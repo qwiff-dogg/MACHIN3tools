@@ -20,28 +20,35 @@ def reload_modules(name):
     import os
     import importlib
 
+    debug = False
+    # debug = True
+
 
     # first update the classes and keys dicts, the properties, items, colors
     from . import registration, items, colors
 
     for module in [registration, items, colors]:
-        print("reloading", module.__name__)
+        # print("reloading", module.__name__)
         importlib.reload(module)
 
     # then fetch and reload all utils modules
     utils_modules = sorted([name[:-3] for name in os.listdir(os.path.join(__path__[0], "utils")) if name.endswith('.py')])
 
     for module in utils_modules:
-        impline = "from . utils import %s" % (module)
+        impline = f"from . utils import {module}"
 
-        print("reloading %s" % (".".join([name] + ['utils'] + [module])))
+        if debug:
+            print(f"reloading {name}.utils.{module}")
 
         exec(impline)
         importlib.reload(eval(module))
 
 
     from . import handlers
-    print("reloading", handlers.__name__)
+    
+    if debug:
+        print("reloading", handlers.__name__)
+
     importlib.reload(handlers)
 
     # and based on that, reload the modules containing operator and menu classes
@@ -58,11 +65,12 @@ def reload_modules(name):
 
     for path, module in modules:
         if path:
-            impline = "from . %s import %s" % (".".join(path), module)
+            impline = f"from . {'.'.join(path)} import {module}"
         else:
-            impline = "from . import %s" % (module)
+            impline = f"from . import {module}"
 
-        print("reloading %s" % (".".join([name] + path + [module])))
+        if debug:
+            print(f"reloading {name}.{'.'.join(path)}.{module}")
 
         exec(impline)
         importlib.reload(eval(module))
