@@ -1327,7 +1327,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
             if "PIE" not in name:
                 keylist = keysdict.get(name)
 
-                if draw_keymap_items(kc, name, keylist, layout):
+                if draw_keymap_items(kc, name, keylist, layout) and not drawn:
                     drawn = True
 
         return drawn

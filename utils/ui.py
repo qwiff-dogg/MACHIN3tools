@@ -255,7 +255,8 @@ def draw_keymap_items(kc, name, keylist, layout):
                 idx += 1
 
         drawn.append(isdrawn)
-    return drawn
+
+    return any(d for d in drawn)
 
 
 def get_keymap_item(name, idname, key=None, alt=False, ctrl=False, shift=False, properties=[]):
