@@ -7,7 +7,7 @@ bl_info = {
     "description": "Streamlining Blender 3.3+.",
     "warning": "",
     "doc_url": "https://machin3.io/MACHIN3tools/docs",
-    "category": "Mesh"}
+    "category": "3D View"}
 
 
 def reload_modules(name):
