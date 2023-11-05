@@ -54,12 +54,15 @@ classes = {'CORE': [('properties', [('HistoryObjectsCollection', ''),
                                           ('ToggleChildren', 'toggle_outliner_children'),
                                           ('ExpandOutliner', 'expand_outliner'),
                                           ('CollapseOutliner', 'collapse_outliner')])],
+
+           'REGION': [('operators.region', [('ToggleRegion', 'toggle_region')])],
+           'SMOOTH': [('operators.smooth', [('ToggleSmooth', 'toggle_smooth')])],
            'THREAD': [('operators.thread', [('Thread', 'add_thread')])],
            'EXTRUDE': [('operators.extrude', [('CursorSpin', 'cursor_spin'),
                                               ('PunchItALittle', 'punch_it_a_little')])],
-           'SMOOTH': [('operators.smooth', [('ToggleSmooth', 'toggle_smooth')])],
            'RENDER': [('operators.render', [('Render', 'render'),
                                             ('DuplicateNodes', 'duplicate_nodes')])],
+
            'CUSTOMIZE': [('operators.customize', [('Customize', 'customize'),
                                                   ('RestoreKeymaps', 'restore_keymaps')])],
 
@@ -185,6 +188,7 @@ keys = {'SMART_VERT': [{'label': 'Merge Last', 'keymap': 'Mesh', 'idname': 'mach
                    {'label': 'Select Parent + Children', 'keymap': 'Object Mode', 'idname': 'machin3.select_hierarchy', 'type': 'DOWN_ARROW', 'value': 'PRESS', 'shift': True, 'properties': [('include_parent', True), ('unhide', False)]},
                    {'label': 'Select Children + Unhide', 'keymap': 'Object Mode', 'idname': 'machin3.select_hierarchy', 'type': 'DOWN_ARROW', 'value': 'PRESS', 'ctrl': True, 'properties': [('include_parent', False), ('unhide', True)]},
                    {'label': 'Select Parent + Children + Unhide', 'keymap': 'Object Mode', 'idname': 'machin3.select_hierarchy', 'type': 'DOWN_ARROW', 'value': 'PRESS', 'shift': True, 'ctrl': True, 'properties': [('include_parent', True), ('unhide', True)]}],
+        'REGION': [{'keymap': '3D View Generic', 'space_type': 'VIEW_3D', 'idname': 'machin3.toggle_region', 'type': 'T', 'value': 'PRESS'}],
         'SMOOTH': [{'keymap': '3D View Generic', 'space_type': 'VIEW_3D', 'idname': 'machin3.toggle_smooth', 'type': 'TAB', 'value': 'PRESS', 'alt': True, 'info': ['Remap this is if Alt + Tab switches Windows for you']}],
         'RENDER': [{'keymap': 'Node Editor', 'space_type': 'NODE_EDITOR', 'idname': 'machin3.duplicate_nodes', 'type': 'D', 'value': 'PRESS', 'shift': True}],
 

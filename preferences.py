@@ -181,6 +181,9 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     def update_activate_mesh_cut(self, context):
         activate(self, register=self.activate_mesh_cut, tool="mesh_cut")
 
+    def update_activate_region(self, context):
+        activate(self, register=self.activate_region, tool="region")
+
     def update_activate_thread(self, context):
         activate(self, register=self.activate_thread, tool="thread")
 
@@ -209,7 +212,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
         activate(self, register=self.activate_align_pie, tool="align_pie")
 
     def update_activate_cursor_pie(self, context):
-        activate(self, register=self.activate_cursor_pie, tool="cursor_pie")
+        activate(self, register=self.activate_cursthreador_pie, tool="cursor_pie")
 
     def update_activate_transform_pie(self, context):
         activate(self, register=self.activate_transform_pie, tool="transform_pie")
@@ -457,6 +460,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     activate_apply: BoolProperty(name="Apply", default=False, update=update_activate_apply)
     activate_select: BoolProperty(name="Select", default=False, update=update_activate_select)
     activate_mesh_cut: BoolProperty(name="Mesh Cut", default=False, update=update_activate_mesh_cut)
+    activate_region: BoolProperty(name="Toggle Region", default=False, update=update_activate_region)
     activate_thread: BoolProperty(name="Thread", default=False, update=update_activate_thread)
     activate_unity: BoolProperty(name="Unity", default=False, update=update_activate_unity)
     activate_customize: BoolProperty(name="Customize", default=False, update=update_activate_customize)
@@ -576,6 +580,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
         draw_split_row(self, column, prop='activate_apply', text='Apply', label='Apply Transformations while keeping the Bevel Width as well as the Child Transformations unchanged', factor=0.25)
         draw_split_row(self, column, prop='activate_select', text='Select', label='Select Center Objects or Wire Objects', factor=0.25)
         draw_split_row(self, column, prop='activate_mesh_cut', text='Mesh Cut', label='Knife Intersect a Mesh-Object, using another one', factor=0.25)
+        draw_split_row(self, column, prop='activate_region', text='Toggle Region', label='Toggle 3D View Regions using a single keymap, depending on mouse position', factor=0.25)
         draw_split_row(self, column, prop='activate_thread', text='Thread', label='Easily turn Cylinder Faces into Thread', factor=0.25)
         draw_split_row(self, column, prop='activate_unity', text='Unity', label='Unity related Tools', factor=0.25)
 

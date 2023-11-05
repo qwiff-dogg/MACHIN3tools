@@ -19,7 +19,26 @@ def get_icon(name):
     return icons[name].icon_id
 
 
-# CURSOR
+# MOUSE
+
+def get_mouse_pos(self, context, event, hud=True, hud_offset=(20, 20)):
+    '''
+    get and set the current mouse position (region space)
+    optionally
+        create an offset vector too, based on the wm.HC_mouse_pos_region prop, this would be used in an operator's invoke() only
+        set HUD_x and HUD_y props for HUD drawing
+    '''
+
+    self.mouse_pos = Vector((event.mouse_region_x, event.mouse_region_y))
+
+    if hud:
+        scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
+
+        self.HUD_x = self.mouse_pos.x + hud_offset[0] * scale
+        self.HUD_y = self.mouse_pos.y + hud_offset[1] * scale
+
+
+# CURSOR - TODO: remove
 
 def init_cursor(self, event, offsetx=0, offsety=20):
     self.last_mouse_x = event.mouse_x
