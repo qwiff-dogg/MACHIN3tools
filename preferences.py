@@ -11,6 +11,8 @@ from . items import preferences_tabs, matcap_background_type_items
 decalmachine = None
 meshmachine = None
 punchit = None
+curvemachine = None
+hypercursor = None
 
 has_sidebar = ['OT_smart_drive',
                'OT_group',
@@ -614,7 +616,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
         bb.label(text="Addon")
 
         column = bb.column()
-        draw_split_row(self, column, prop='registration_debug', label='Addon Terminal Registration Output')
+        draw_split_row(self, column, prop='registration_debug', label='Print Addon Registration Output in System Console')
 
 
         # VIEW 3D settings
@@ -633,14 +635,13 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
             bb = b.box()
             bb.label(text="HUD")
 
-            column = bb.column()
-            row = draw_split_row(self, column, prop='modal_hud_scale', label='HUD Scale')
+            column = bb.column(align=True)
+            factor = 0.4 if getattr(bpy.types, 'MACHIN3_OT_mirror', False) else 0.2
+
+            row = draw_split_row(self, column, prop='modal_hud_scale', label='HUD Scale', factor=factor)
 
             if getattr(bpy.types, "MACHIN3_OT_mirror", False):
-                r = row.split(factor=0.3)
-                r.prop(self, "mirror_flick_distance", text="")
-                r.label(text="Mirror Flick Distance")
-
+                draw_split_row(self, row, prop='mirror_flick_distance', label='Mirror Flick distance Scale', factor=factor)
 
             if any([getattr(bpy.types, f'MACHIN3_{name}', False) for name in is_fading]):
                 column = bb.column()
@@ -726,7 +727,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                 column = bb.column(align=True)
 
                 draw_split_row(self, column, prop='preferred_default_catalog', label='Preferred Default Catalog (must exist already)')
-                draw_split_row(self, column, prop='preferred_assetbrowser_workspace_name', label='Preferred Workspace for Assumbly Asset Creation')
+                draw_split_row(self, column, prop='preferred_assetbrowser_workspace_name', label='Preferred Workspace for Assembly Asset Creation')
                 draw_split_row(self, column, prop='hide_wire_objects_when_creating_assembly_asset', label='Hide Wire Objects when creatinng Assembly Asset')
                 draw_split_row(self, column, prop='hide_wire_objects_when_assembling_instance_collection', label='Hide Wire Objects when assemgling Instance Collection')
 
@@ -780,8 +781,8 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                 draw_split_row(self, column, prop='matpick_workspace_names', label='Show Material Picker in these Workspaces')
                 draw_split_row(self, column, prop='matpick_shading_type_material', label='Show Material Picker in Views set to Material Shading')
                 draw_split_row(self, column, prop='matpick_shading_type_render', label='Show Material Picker in Views set to Rendered Shading')
-                draw_split_row(self, column, prop='matpick_spacing_obj', label='Object Mode Spacing')
-                draw_split_row(self, column, prop='matpick_spacing_edit', label='Edit Mode Spacing')
+                draw_split_row(self, column, prop='matpick_spacing_obj', label='Object Mode Header Spacing')
+                draw_split_row(self, column, prop='matpick_spacing_edit', label='Edit Mode Header Spacing')
 
 
 
@@ -989,7 +990,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
             if self.shading_pie_autosmooth_show:
                 column = bb.column(align=True)
 
-                draw_split_row(self, column, prop='auto_smooth_angle_presets', label='Auto Smooth Angle Presets shown in the Shading Pie as buttons')
+                draw_split_row(self, column, prop='auto_smooth_angle_presets', label='Auto Smooth Angle Presets shown in the Shading Pie as buttons', factor=0.25)
 
 
             # Matcap Switch
@@ -1285,7 +1286,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
             b.label(text="No keymappings created, because none of the pies have been activated.", icon='ERROR')
 
     def draw_about(self, box):
-        global decalmachine, meshmachine, punchit
+        global decalmachine, meshmachine, punchit, curvemachine, hypercursor
 
         if decalmachine is None:
             decalmachine = get_addon('DECALmachine')[0]
@@ -1295,6 +1296,12 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
 
         if punchit is None:
             punchit = get_addon('PUNCHit')[0]
+
+        if curvemachine is None:
+            curvemachine = get_addon('CURVEmachine')[0]
+
+        if hypercursor is None:
+            hypercursor = get_addon('HyperCursor')[0]
 
         column = box.column(align=True)
 
@@ -1319,6 +1326,8 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
         row.operator("wm.url_open", text='DECALmachine', icon_value=get_icon('save' if decalmachine else 'cancel_grey')).url = 'https://decal.machin3.io'
         row.operator("wm.url_open", text='MESHmachine', icon_value=get_icon('save' if meshmachine else 'cancel_grey')).url = 'https://mesh.machin3.io'
         row.operator("wm.url_open", text='PUNCHit', icon_value=get_icon('save' if punchit else 'cancel_grey')).url = 'https://machin3.io/PUNCHit'
+        row.operator("wm.url_open", text='CURVEmachine', icon_value=get_icon('save' if curvemachine else 'cancel_grey')).url = 'https://machin3.io/CURVEmachine'
+        row.operator("wm.url_open", text='HyperCursor', icon_value=get_icon('save' if hypercursor else 'cancel_grey')).url = 'https://www.youtube.com/playlist?list=PLcEiZ9GDvSdWs1w4ZrkbMvCT2R4F3O9yD'
 
     def draw_tool_keymaps(self, kc, keysdict, layout):
         drawn = False
