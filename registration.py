@@ -56,6 +56,7 @@ classes = {'CORE': [('properties', [('HistoryObjectsCollection', ''),
                                           ('CollapseOutliner', 'collapse_outliner')])],
 
            'REGION': [('operators.region', [('ToggleRegion', 'toggle_region')])],
+                                            # ('AreaDumper', 'area_dumper')])],
            'SMOOTH': [('operators.smooth', [('ToggleSmooth', 'toggle_smooth')])],
            'THREAD': [('operators.thread', [('Thread', 'add_thread')])],
            'EXTRUDE': [('operators.extrude', [('CursorSpin', 'cursor_spin'),
