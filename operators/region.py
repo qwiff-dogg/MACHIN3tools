@@ -21,7 +21,7 @@ class ToggleRegion(bpy.types.Operator):
     def invoke(self, context, event):
 
         # init asset_browser_prefs dict
-        self.initiate_asset_browser_prefs(context, debug=True)
+        self.initiate_asset_browser_prefs(context, debug=False)
 
         # find_areas directly above or below the active area
         areas = self.get_areas(context, debug=False)
@@ -63,7 +63,9 @@ class ToggleRegion(bpy.types.Operator):
             empty = {'libref': 'ALL',
                      'catalog_id': '',
                      'import_method': 'FOLLOW_PREFS',
-                     'header_align': 'TOP'}
+                     'header_align': 'TOP',
+                     'show_region_toolbar': True,
+                     'show_region_ui': False}
 
             self.prefs[context.screen.name] = {'ASSET_TOP': empty,
                                                'ASSET_BOTTOM': empty.copy()}
@@ -226,6 +228,7 @@ class ToggleRegion(bpy.types.Operator):
 
 
         # get context
+        area = context.area
         space = context.space_data
         region = regions[region_type] if region_type in regions else None
         screen_name = context.screen.name
@@ -296,12 +299,12 @@ class ToggleRegion(bpy.types.Operator):
                     # ####: for instance, don't close a fucking time line if you would open an asset browser
 
                     
-                    # CLOSE EXISTING AREA at the BOTTOm or TOP, if present
+                    # CLOSE EXISTING AREA at the BOTTOM or TOP, if present, and before you do, fetch it's properties and store them, for later restoration
 
                     if (is_bottom and areas['BOTTOM']) or (not is_bottom and areas['TOP']):
-                        area = areas['BOTTOM' if is_bottom else 'TOP']
+                        close_area = areas['BOTTOM' if is_bottom else 'TOP']
 
-                        for space in area.spaces:
+                        for space in close_area.spaces:
                             if space.type == 'FILE_BROWSER':
                                 if space.params:
                                     libref = get_asset_library_reference(space.params)
@@ -311,26 +314,18 @@ class ToggleRegion(bpy.types.Operator):
                                     self.prefs[screen_name][region_type]['import_method'] = import_method
                                     self.prefs[screen_name][region_type]['catalog_id'] = space.params.catalog_id
 
-                        for region in area.regions:
+                        for region in close_area.regions:
                             if region.type == 'HEADER':
                                 self.prefs[screen_name][region_type]['header_align'] = region.alignment
 
 
-                        with context.temp_override(area=area):
+                        with context.temp_override(area=close_area):
                             bpy.ops.screen.area_close()
 
  
                     # OPEN NEW AREA at BOTTOM or TOP
 
                     else:
-                        # print(" there is no existing area bellow yet")
-
-                        # NOTE: we won't be able to set the asset browser HEADER alignment, it's read-only prop
-                        # ####: even using the screen.region_flip() op doesn't seem to work, even with context override
-                        # ####: but what we can do is temporarilly set Blender's interace prefs to the alignment that we want, and the reset it
-                        # NOTE: that said, resetting it back messes with our abiltiy to set it somehow, unless we don't reset it or reset it to NONE, see below
-                        # header_align = context.preferences.view.header_align
-                        context.preferences.view.header_align = self.prefs[screen_name][region_type]['header_align']
 
                         # fetch all exsiting areas
                         all_areas = [area for area in context.screen.areas]
@@ -363,6 +358,12 @@ class ToggleRegion(bpy.types.Operator):
 
                                             new_space.params.catalog_id = catalog_id
 
+                                        # flip HEADER region if necessary
+                                        for region in new_area.regions:
+                                            if region.type == 'HEADER':
+                                                if region.alignment != self.prefs[screen_name][region_type]['header_align']:
+                                                    with context.temp_override(area=new_area, region=region):
+                                                        bpy.ops.screen.region_flip()
 
                                     # NOTE: space.params can be None, so we can't set Library, or any other of the spaces settings
                                     # ####: however, if you manually turn the 3d view into an asset browser and back into a 3d view again, then params will be available
@@ -376,11 +377,6 @@ class ToggleRegion(bpy.types.Operator):
 
                                         coords = (context.region.width / 2, 60 * scale if region_type == 'ASSET_BOTTOM' else context.region.height - (120 * scale + context.region.height * asset_split_factor))
                                         bpy.ops.machin3.draw_label(text="Then save the blend file", coords=coords, color=yellow, alpha=1, time=5)
-
-
-                        # reset blender pref to restore original header_align pref
-                        # NOTE: turns out it somehow doesn't work? always setting it to NONE does work though
-                        context.preferences.view.header_align = 'NONE'
 
 
         # TODO?
@@ -401,8 +397,16 @@ class AreaDumper(bpy.types.Operator):
 
     def execute(self, context):
 
-        del context.scene.M3['asset_browser_prefs']
+ 
 
+        # del context.scene.M3['asset_browser_prefs']
+
+        for region in context.area.regions:
+            if region.type == 'HEADER':
+                with context.temp_override(region=region):
+                    print("flipping", region, "of type", region.type)
+
+                    bpy.ops.screen.region_flip()
 
 
 
