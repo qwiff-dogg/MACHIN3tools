@@ -297,8 +297,7 @@ class ToggleRegion(bpy.types.Operator):
                                 if space.params:
                                     libref = get_asset_library_reference(space.params)
                                     asset_browser_prefs[screen_name][region_type]['libref'] = libref
-
-                                    print("stored", libref, "for screen", screen_name, "and region type", region_type)
+                                    # print("stored", libref, "for screen", screen_name, "and region type", region_type)
 
                         with context.temp_override(area=area):
                             bpy.ops.screen.area_close()
