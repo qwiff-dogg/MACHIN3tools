@@ -4,7 +4,7 @@ from .. utils.ui import get_mouse_pos
 from .. utils.system import printd
 from .. utils.registration import get_prefs
 from .. utils.workspace import is_fullscreen, get_assetbrowser_space
-from .. utils.asset import get_asset_library_reference, set_asset_library_reference
+from .. utils.asset import get_asset_import_method, get_asset_library_reference, set_asset_import_method, set_asset_library_reference
 from .. colors import red, yellow
 
 
@@ -61,7 +61,9 @@ class ToggleRegion(bpy.types.Operator):
             # print("initiating asset browser prefs for screen", screen_name)
 
             empty = {'libref': 'ALL',
-                     'catalog_id': ''}
+                     'catalog_id': '',
+                     'import_method': 'FOLLOW_PREFS',
+                     'header_align': 'TOP'}
 
             self.prefs[context.screen.name] = {'ASSET_TOP': empty,
                                                'ASSET_BOTTOM': empty.copy()}
@@ -263,10 +265,6 @@ class ToggleRegion(bpy.types.Operator):
         elif region_type == 'HUD':
             space.show_region_hud = not space.show_region_hud
 
-            # if region:
-            #     if debug:
-            #         print("redo region:", region)
-
 
         # Asset Shelf or Browser
 
@@ -277,10 +275,6 @@ class ToggleRegion(bpy.types.Operator):
 
             if asset_shelf:
                 space.show_region_asset_shelf = not space.show_region_asset_shelf
-
-                # if region:
-                #     if debug:
-                #         print("asset shelf region:", region)
 
 
             # SPLIT AREA 
@@ -295,16 +289,15 @@ class ToggleRegion(bpy.types.Operator):
 
                 else:
                     is_bottom = region_type == 'ASSET_BOTTOM'
-
-                    # if debug:
-                    #     print(f"splitting the area to create assetbrowser at {'BOTTOM' if is_bottom else 'TOP'}")
+                    # print(f"splitting the area to create assetbrowser at {'BOTTOM' if is_bottom else 'TOP'}")
 
 
                     # TODO: only close the type of area you would open
                     # ####: for instance, don't close a fucking time line if you would open an asset browser
 
                     
-                    # close the existing area at the bottom or top, if present
+                    # CLOSE EXISTING AREA at the BOTTOm or TOP, if present
+
                     if (is_bottom and areas['BOTTOM']) or (not is_bottom and areas['TOP']):
                         area = areas['BOTTOM' if is_bottom else 'TOP']
 
@@ -312,17 +305,32 @@ class ToggleRegion(bpy.types.Operator):
                             if space.type == 'FILE_BROWSER':
                                 if space.params:
                                     libref = get_asset_library_reference(space.params)
+                                    import_method = get_asset_import_method(space.params)
+
                                     self.prefs[screen_name][region_type]['libref'] = libref
+                                    self.prefs[screen_name][region_type]['import_method'] = import_method
                                     self.prefs[screen_name][region_type]['catalog_id'] = space.params.catalog_id
 
-                                    # print("stored", libref, "for screen", screen_name, "and region type", region_type)
+                        for region in area.regions:
+                            if region.type == 'HEADER':
+                                self.prefs[screen_name][region_type]['header_align'] = region.alignment
+
 
                         with context.temp_override(area=area):
                             bpy.ops.screen.area_close()
 
+ 
+                    # OPEN NEW AREA at BOTTOM or TOP
+
                     else:
-                        # if debug:
-                        #     print(" there is no existing area bellow yet")
+                        # print(" there is no existing area bellow yet")
+
+                        # NOTE: we won't be able to set the asset browser HEADER alignment, it's read-only prop
+                        # ####: even using the screen.region_flip() op doesn't seem to work, even with context override
+                        # ####: but what we can do is temporarilly set Blender's interace prefs to the alignment that we want, and the reset it
+                        # NOTE: that said, resetting it back messes with our abiltiy to set it somehow, unless we don't reset it or reset it to NONE, see below
+                        # header_align = context.preferences.view.header_align
+                        context.preferences.view.header_align = self.prefs[screen_name][region_type]['header_align']
 
                         # fetch all exsiting areas
                         all_areas = [area for area in context.screen.areas]
@@ -345,14 +353,15 @@ class ToggleRegion(bpy.types.Operator):
                                     new_space.show_region_toolbar = not new_space.show_region_toolbar
 
                                     if new_space.params:
-                                        if context.active_object:
+                                        if screen_name in self.prefs:
+                                            libref = self.prefs[screen_name][region_type]['libref']
+                                            import_method = self.prefs[screen_name][region_type]['import_method']
+                                            catalog_id = self.prefs[screen_name][region_type]['catalog_id']
 
-                                            if screen_name in self.prefs:
-                                                libref = self.prefs[screen_name][region_type]['libref']
-                                                catalog_id = self.prefs[screen_name][region_type]['catalog_id']
+                                            set_asset_library_reference(new_space.params, libref)
+                                            set_asset_import_method(new_space.params, import_method)
 
-                                                set_asset_library_reference(new_space.params, libref)
-                                                new_space.params.catalog_id = catalog_id
+                                            new_space.params.catalog_id = catalog_id
 
 
                                     # NOTE: space.params can be None, so we can't set Library, or any other of the spaces settings
@@ -369,6 +378,11 @@ class ToggleRegion(bpy.types.Operator):
                                         bpy.ops.machin3.draw_label(text="Then save the blend file", coords=coords, color=yellow, alpha=1, time=5)
 
 
+                        # reset blender pref to restore original header_align pref
+                        # NOTE: turns out it somehow doesn't work? always setting it to NONE does work though
+                        context.preferences.view.header_align = 'NONE'
+
+
         # TODO?
         # show_region_header True
         # show_region_tool_header True
@@ -382,38 +396,33 @@ class AreaDumper(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return False
+        # return False
+        return True
 
     def execute(self, context):
+
+        del context.scene.M3['asset_browser_prefs']
+
+
+
+
+        return {'FINISHED'}
+
+
         space = get_assetbrowser_space(context.area)
 
+        # if space and space.params:
+        #     for d in dir(space.params):
+        #         print("", d, getattr(space.params, d))
 
-        if space and space.params:
-            # for d in dir(space.params):
-            #     print("", d, getattr(space.params, d))
+        area = context.area
 
-            print(space.params.catalog_id)
+        print()
+        print("area")
 
-            inset = "e1a0a97c-ea24-49c8-9b7d-8d48e50b9ceb"
-            insets = "078387b2-62d7-40f3-9f1b-2d3a67cf59a2"
-            poses = "19d702a5-25ec-436e-9cd7-7da6562666eb"
+        for d in dir(area):
+            print("", d, getattr(area, d))
 
-            # space.params.catalog_id = poses
-            # space.params.catalog_id = inset
-            space.params.catalog_id = "19d742b5-25ec-436e-9cd7-7da6562666eb"
-
-
-
-
-
-        # area = context.area
-        #
-        # print()
-        # print("area")
-        #
-        # for d in dir(area):
-        #     print("", d, getattr(area, d))
-        #
         # print()
         # print("spaces")
         # for space in area.spaces:
@@ -428,14 +437,14 @@ class AreaDumper(bpy.types.Operator):
         #             for d in dir(space.params):
         #                 print("", d, getattr(space.params, d))
         #
-        # print()
-        # print("regions")
-        # for region in area.regions:
-        #     print()
-        #     print(region.type)
-        #
-        #     for d in dir(region):
-        #         print("", d, getattr(region, d))
+        print()
+        print("regions")
+        for region in area.regions:
+            print()
+            print(region.type)
+
+            for d in dir(region):
+                print("", d, getattr(region, d))
 
 
         return {'FINISHED'}
