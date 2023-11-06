@@ -3,12 +3,10 @@ from bpy.utils import time_from_frame
 from .. utils.ui import get_mouse_pos
 from .. utils.system import printd
 from .. utils.registration import get_prefs
-from .. utils.workspace import is_fullscreen
+from .. utils.workspace import is_fullscreen, get_assetbrowser_space
 from .. utils.asset import get_asset_library_reference, set_asset_library_reference
 from .. colors import red, yellow
 
-
-asset_browser_prefs = {}
 
 class ToggleRegion(bpy.types.Operator):
     bl_idname = "machin3.toggle_region"
@@ -21,6 +19,9 @@ class ToggleRegion(bpy.types.Operator):
         return context.area.type in ['VIEW_3D']
 
     def invoke(self, context, event):
+
+        # init asset_browser_prefs dict
+        self.initiate_asset_browser_prefs(context, debug=True)
 
         # find_areas directly above or below the active area
         areas = self.get_areas(context, debug=False)
@@ -42,6 +43,31 @@ class ToggleRegion(bpy.types.Operator):
 
 
     # UTILS
+
+    def initiate_asset_browser_prefs(self, context, debug=False):
+        '''
+        1. ensure the asset browser prefs are stored on the scene level in a dict
+        2. and reference it on the op via self.prefs
+        3. then add the current screen to it, if it's not stored already
+        '''
+
+        if not context.scene.M3.get('asset_browser_prefs', False):
+            context.scene.M3['asset_browser_prefs'] = {}
+
+        self.prefs = context.scene.M3.get('asset_browser_prefs')
+
+        # ensure the curretn screen is in the asset browser presf
+        if context.screen.name not in self.prefs:
+            # print("initiating asset browser prefs for screen", screen_name)
+
+            empty = {'libref': 'ALL',
+                     'catalog_id': ''}
+
+            self.prefs[context.screen.name] = {'ASSET_TOP': empty,
+                                               'ASSET_BOTTOM': empty.copy()}
+
+        if debug:
+            printd(self.prefs.to_dict())
 
     def get_areas(self, context, debug=False):
         '''
@@ -209,16 +235,6 @@ class ToggleRegion(bpy.types.Operator):
         asset_split_factor = 0.2
         scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
 
-        # init asset_browser_prefs dict
-        global asset_browser_prefs
-
-        if screen_name not in asset_browser_prefs:
-            # print("initiating asset browser prefs for screen", screen_name)
-
-            empty = {'libref': 'ALL'}
-            asset_browser_prefs[screen_name] = {'ASSET_TOP': empty,
-                                                'ASSET_BOTTOM': empty.copy()}
-
 
         # Toolbar
 
@@ -296,7 +312,9 @@ class ToggleRegion(bpy.types.Operator):
                             if space.type == 'FILE_BROWSER':
                                 if space.params:
                                     libref = get_asset_library_reference(space.params)
-                                    asset_browser_prefs[screen_name][region_type]['libref'] = libref
+                                    self.prefs[screen_name][region_type]['libref'] = libref
+                                    self.prefs[screen_name][region_type]['catalog_id'] = space.params.catalog_id
+
                                     # print("stored", libref, "for screen", screen_name, "and region type", region_type)
 
                         with context.temp_override(area=area):
@@ -328,8 +346,14 @@ class ToggleRegion(bpy.types.Operator):
 
                                     if new_space.params:
                                         if context.active_object:
-                                            libref = asset_browser_prefs[screen_name][region_type]['libref'] if screen_name in asset_browser_prefs else 'ALL'
-                                            set_asset_library_reference(new_space.params, libref)
+
+                                            if screen_name in self.prefs:
+                                                libref = self.prefs[screen_name][region_type]['libref']
+                                                catalog_id = self.prefs[screen_name][region_type]['catalog_id']
+
+                                                set_asset_library_reference(new_space.params, libref)
+                                                new_space.params.catalog_id = catalog_id
+
 
                                     # NOTE: space.params can be None, so we can't set Library, or any other of the spaces settings
                                     # ####: however, if you manually turn the 3d view into an asset browser and back into a 3d view again, then params will be available
@@ -356,37 +380,62 @@ class AreaDumper(bpy.types.Operator):
     bl_description = "description"
     bl_options = {'REGISTER', 'UNDO'}
 
+    @classmethod
+    def poll(cls, context):
+        return False
+
     def execute(self, context):
-        area = context.area
+        space = get_assetbrowser_space(context.area)
 
-        print()
-        print("area")
 
-        for d in dir(area):
-            print("", d, getattr(area, d))
+        if space and space.params:
+            # for d in dir(space.params):
+            #     print("", d, getattr(space.params, d))
 
-        print()
-        print("spaces")
-        for space in area.spaces:
-            if space.type == 'FILE_BROWSER':
-                for d in dir(space):
-                    print("", d, getattr(space, d))
+            print(space.params.catalog_id)
 
-                if space.params:
-                    print()
-                    print("params")
+            inset = "e1a0a97c-ea24-49c8-9b7d-8d48e50b9ceb"
+            insets = "078387b2-62d7-40f3-9f1b-2d3a67cf59a2"
+            poses = "19d702a5-25ec-436e-9cd7-7da6562666eb"
 
-                    for d in dir(space.params):
-                        print("", d, getattr(space.params, d))
+            # space.params.catalog_id = poses
+            # space.params.catalog_id = inset
+            space.params.catalog_id = "19d742b5-25ec-436e-9cd7-7da6562666eb"
 
-        print()
-        print("regions")
-        for region in area.regions:
-            print()
-            print(region.type)
 
-            for d in dir(region):
-                print("", d, getattr(region, d))
+
+
+
+        # area = context.area
+        #
+        # print()
+        # print("area")
+        #
+        # for d in dir(area):
+        #     print("", d, getattr(area, d))
+        #
+        # print()
+        # print("spaces")
+        # for space in area.spaces:
+        #     if space.type == 'FILE_BROWSER':
+        #         for d in dir(space):
+        #             print("", d, getattr(space, d))
+        #
+        #         if space.params:
+        #             print()
+        #             print("params")
+        #
+        #             for d in dir(space.params):
+        #                 print("", d, getattr(space.params, d))
+        #
+        # print()
+        # print("regions")
+        # for region in area.regions:
+        #     print()
+        #     print(region.type)
+        #
+        #     for d in dir(region):
+        #         print("", d, getattr(region, d))
 
 
         return {'FINISHED'}

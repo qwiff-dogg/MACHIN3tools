@@ -2,6 +2,24 @@
 from typing import OrderedDict
 
 
+# ASSET BROWSER
+
+def get_assetbrowser_area(context):
+    if context.workspace:
+        for screen in context.workspace.screens:
+            for area in screen.areas:
+                if area.type == 'FILE_BROWSER' and area.ui_type == 'ASSETS':
+                    return area
+
+
+def get_assetbrowser_space(area):
+    for space in area.spaces:
+        if space.type == 'FILE_BROWSER':
+            return space
+
+
+# 3D VIEW
+
 def get_3dview_area(context):
     if context.workspace:
         for screen in context.workspace.screens:
