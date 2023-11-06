@@ -2,6 +2,8 @@ import bpy
 from .. utils.ui import get_mouse_pos
 from .. utils.system import printd
 from .. utils.registration import get_prefs
+from .. utils.workspace import is_fullscreen
+from .. utils.asset import set_asset_library_reference
 from .. colors import red
 
 
@@ -17,6 +19,10 @@ class ToggleRegion(bpy.types.Operator):
 
     def invoke(self, context, event):
 
+        # find_areas directly above or below the active area
+        areas = self.get_areas(context, debug=False)
+
+
         # get regions
         regions = self.get_regions(context.area, debug=False)
 
@@ -27,13 +33,64 @@ class ToggleRegion(bpy.types.Operator):
         type = self.get_region_type_from_mouse(context, debug=False)
 
         # then toggle it
-        self.toggle_region(context, regions, type=type, debug=True)
+        self.toggle_region(context, areas, regions, type=type, debug=True)
 
-        context.area.tag_redraw()
+        # context.area.tag_redraw()
         return {'FINISHED'}
 
 
     # UTILS
+
+    def get_areas(self, context, debug=False):
+        '''
+        check the screen for areas exactly above or below the active area
+        so they have to have the same x coord and width!
+        '''
+
+        active_area = context.area
+
+        if debug:
+            print()
+            print("active area:", active_area.x, active_area.y, active_area.width, active_area.height)
+
+        areas = {'TOP': None,
+                 'BOTTOM': None}
+
+        for area in context.screen.areas:
+            if area == active_area:
+                # if debug:
+                #     print(">", area.type)
+                continue
+            else:
+                if debug:
+                    print(" ", area.type)
+                    print("  ", area.x, area.y, area.width, area.height)
+
+                if area.x == active_area.x and area.width == active_area.width:
+                    location = 'BOTTOM' if area.y < active_area.y else 'TOP'
+
+                    if debug:
+                        print(f"   area is in the same 'column' and located at the {location}")
+
+                    # replace existing location, if it is closer to the active one, compared to the previously stored region above or below the active
+                    if areas[location]:
+                        if location == 'BOTTOM' and area.y > areas[location].y:
+                            areas[location] = area
+
+                        elif location == 'TOP' and area.y < areas[location].y:
+                            areas[location] = area
+
+                    else:
+                        areas[location] = area
+
+        if debug:
+            for location, area in areas.items():
+                print(location)
+
+                if area:
+                    print("", area.type)
+
+        return areas
 
     def get_regions(self, area, debug=False):
         '''
@@ -128,10 +185,19 @@ class ToggleRegion(bpy.types.Operator):
         else:
             return context.region.type
 
-    def toggle_region(self, context, regions, type='TOOLS', debug=False):
+    def toggle_region(self, context, areas, regions, type='TOOLS', debug=False):
         '''
         toggle region based on type arg
         '''
+
+        # fetch settingsbpy.ops.screen.back_to_previous()
+        asset_shelf = False
+        below_area_split = 'ASSET_BROWSER'
+        top_area_split = 'IMAGE_EDITOR'
+        asset_split_factor = 0.2
+
+        scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
+
 
         if debug:
             print()
@@ -141,9 +207,6 @@ class ToggleRegion(bpy.types.Operator):
 
         # fetch the region that is being toggled
         region = regions[type] if type in regions else None
-
-        # the asset shelf is pretty limited right now, so don't use it yet
-        asset_shelf = False
 
 
         # Toolbar
@@ -161,7 +224,6 @@ class ToggleRegion(bpy.types.Operator):
 
                 # it's possible the region can't be toggled because there is not enough space, in which case the width will be 1
                 if region.width == 1:
-                    scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
                     coords = (context.region.width / 2, 100 * scale)
                     bpy.ops.machin3.draw_label(text="Can't Toggle the Sidebar", coords=coords, color=red, alpha=1, time=1.2)
 
@@ -181,7 +243,10 @@ class ToggleRegion(bpy.types.Operator):
 
         # Asset Shelf or Browser
 
-        elif type == 'ASSET_BOTTOM':
+        elif type in ['ASSET_BOTTOM', 'ASSET_TOP']:
+
+
+            # TOGGLE ASSET SHELF
 
             if asset_shelf:
                 space.show_region_asset_shelf = not space.show_region_asset_shelf
@@ -190,21 +255,71 @@ class ToggleRegion(bpy.types.Operator):
                     if debug:
                         print("asset shelf region:", region)
 
+
+            # SPLIT AREA 
+
             else:
-                # TODO: split bottom area
 
-                if debug:
-                    print("splitting the area to create assetbrowser at BOTTOM")
+                if is_fullscreen(context.screen):
+
+                    coords = (context.region.width / 2, 100 * scale if type == 'ASSET_BOTTOM' else context.region.height - 100 * scale)
+                    bpy.ops.machin3.draw_label(text="You can't Split this area in Fullscreen", coords=coords, color=red, alpha=1, time=2)
 
 
-        elif type == 'ASSET_TOP':
+                else:
+                    is_bottom = type == 'ASSET_BOTTOM'
 
-                # TODO: split top area
+                    if debug:
+                        print(f"splitting the area to create assetbrowser at {'BOTTOM' if is_bottom else 'TOP'}")
+                    
+                    # close the existing area at the bottom or top, if present
+                    if (is_bottom and areas['BOTTOM']) or (not is_bottom and areas['TOP']):
+                        with context.temp_override(area=areas['BOTTOM' if is_bottom else 'TOP']):
+                            bpy.ops.screen.area_close()
 
-                if debug:
-                    print("splitting the area to create assetbrowser at TOP")
+                    else:
+                        if debug:
+                            print(" there is no existing area bellow yet")
 
-        
+                        # fetch all exsiting areas
+                        all_areas = [area for area in context.screen.areas]
+
+                        # do the split
+                        bpy.ops.screen.area_split(direction='HORIZONTAL', factor=asset_split_factor if is_bottom else 1 - asset_split_factor)
+
+                        # find the new area
+                        new_areas = [area for area in context.screen.areas if area not in all_areas]
+
+                        # and make it an asset browser
+                        if new_areas:
+                            new_area = new_areas[0]
+                            new_area.type = 'FILE_BROWSER'
+                            new_area.ui_type = 'ASSETS'
+
+                            context.area.tag_redraw()
+                            new_area.tag_redraw()
+
+                            # NOTE: there is some unpredictable behavior happening, most of the time the new area/screen will not have the tool bar shown
+                            # ####: and what is odd is, that it can' be enabled by setting show_region_toolbar to True
+                            # ####: but it can be enabled by reversing it? 
+                            # ####: what's also odd is that, it always reads out as True
+                            for new_space in new_area.spaces:
+                                if new_space.type == 'FILE_BROWSER':
+                                    new_space.show_region_toolbar = not new_space.show_region_toolbar
+
+                                    # print()
+                                    #
+                                    # for d in dir(new_space):
+                                    #     print("", d, getattr(new_space, d))
+
+                                    # set_asset_library_reference(new_space.params, 'Library')
+
+                                    # NOTE: space.params will be None, so we can't set Library, or any other of the spaces settings
+                                    # ####: however, if you manually turn the 3d view into an asset browsr and set it up how you like, and then switch it back to a 3d view
+                                    # ####: THEN the new split open asset browser will take all of these settings!
+
+
+
         # TODO?
         # show_region_header True
         # show_region_tool_header True

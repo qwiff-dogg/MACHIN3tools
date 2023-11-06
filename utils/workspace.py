@@ -1,4 +1,7 @@
 
+from typing import OrderedDict
+
+
 def get_3dview_area(context):
     if context.workspace:
         for screen in context.workspace.screens:
@@ -19,3 +22,12 @@ def get_window_region_from_area(area):
     for region in area.regions:
         if region.type == 'WINDOW':
             return region, region.data
+
+
+def is_fullscreen(screen):
+    '''
+    for some reason screen.show_fullscreen will remain False even with a maximized area
+    but you can check for 'nonnormal' being in the name, and the area count will also be 1 in fullscreen
+    '''
+    
+    return len(screen.areas) == 1 and 'nonnormal' in screen.name
