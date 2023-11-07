@@ -16,7 +16,8 @@ class ToggleRegion(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.area.type in ['VIEW_3D']
+        if context.area:
+            return context.area.type == 'VIEW_3D'
 
     def invoke(self, context, event):
 
@@ -231,7 +232,7 @@ class ToggleRegion(bpy.types.Operator):
 
         # if debug:
         #     print()
-        #     print("toggling:", type)
+        #     print("toggling:", region_type)
 
         # get context
         space = context.space_data
