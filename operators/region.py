@@ -76,12 +76,14 @@ class ToggleRegion(bpy.types.Operator):
                      'catalog_id': '',
                      'import_method': 'FOLLOW_PREFS',
                      'header_align': 'TOP',
+                     'area_height': 250,
                      'show_region_toolbar': True,
                      'show_region_ui': False}
 
             self.prefs[context.screen.name] = {'ASSET_TOP': empty,
                                                'ASSET_BOTTOM': empty.copy()}
 
+        # if True:
         if debug:
             printd(self.prefs.to_dict())
 
@@ -98,7 +100,8 @@ class ToggleRegion(bpy.types.Operator):
             print("active area:", active_area.x, active_area.y, active_area.width, active_area.height)
 
         areas = {'TOP': None,
-                 'BOTTOM': None}
+                 'BOTTOM': None,
+                 'ACTIVE': active_area}
 
         for area in context.screen.areas:
             if area == active_area:
@@ -238,7 +241,6 @@ class ToggleRegion(bpy.types.Operator):
         #     print()
         #     print("toggling:", type)
 
-
         # get context
         space = context.space_data
         region = regions[region_type] if region_type in regions else None
@@ -246,9 +248,6 @@ class ToggleRegion(bpy.types.Operator):
 
         # get settingsbpy.ops.screen.back_to_previous()
         asset_shelf = False
-        below_area_split = 'ASSET_BROWSER'
-        top_area_split = 'IMAGE_EDITOR'
-        asset_split_factor = 0.2
         scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
 
 
@@ -302,15 +301,19 @@ class ToggleRegion(bpy.types.Operator):
 
 
                 else:
-                    return self.toggle_area(context, areas, region_type, screen_name, asset_split_factor)
+                    return self.toggle_area(context, areas, region_type, screen_name)
 
-    def toggle_area(self, context, areas, region_type, screen_name, asset_split_factor):
+    def toggle_area(self, context, areas, region_type, screen_name):
         '''
-        something
+        "toggle" area, by splitting the current area or closing the one above or below the current one
         '''
-        
-        is_bottom = region_type == 'ASSET_BOTTOM'
+
         # print(f"splitting the area to create assetbrowser at {'BOTTOM' if is_bottom else 'TOP'}")
+
+        # get settings
+        below_area_split = 'ASSET_BROWSER'
+        top_area_split = 'IMAGE_EDITOR'
+        is_bottom = region_type == 'ASSET_BOTTOM'
 
 
         # TODO: only close the type of area you would open
@@ -331,6 +334,7 @@ class ToggleRegion(bpy.types.Operator):
                         self.prefs[screen_name][region_type]['libref'] = libref
                         self.prefs[screen_name][region_type]['import_method'] = import_method
                         self.prefs[screen_name][region_type]['catalog_id'] = space.params.catalog_id
+                        self.prefs[screen_name][region_type]['area_height'] = close_area.height
 
             for region in close_area.regions:
                 if region.type == 'HEADER':
@@ -345,11 +349,19 @@ class ToggleRegion(bpy.types.Operator):
 
         else:
 
+            # calculate asset split factor, from stored height in pixels
+            area = areas['ACTIVE']
+            asset_height = self.prefs[screen_name][region_type]['area_height']
+
+            # the asset split factor should be at most something less than half the height
+            # anything else will mess up the split, and put the 3d view in the new area
+            area_split_factor = min(0.45, asset_height / area.height)
+
             # fetch all exsiting areas
             all_areas = [area for area in context.screen.areas]
 
             # do the split
-            bpy.ops.screen.area_split(direction='HORIZONTAL', factor=asset_split_factor if is_bottom else 1 - asset_split_factor)
+            bpy.ops.screen.area_split(direction='HORIZONTAL', factor=area_split_factor if is_bottom else 1 - area_split_factor)
 
             # find the new area
             new_areas = [area for area in context.screen.areas if area not in all_areas]
@@ -416,14 +428,13 @@ class AreaDumper(bpy.types.Operator):
         return True
 
     def execute(self, context):
-        print(context.area.type)
-        print(context.space_data.type)
-        print(context.region.type)
+        # print(context.area.type)
+        # print(context.space_data.type)
+        # print(context.region.type)
+        #
+        # bpy.ops.screen.area_move('INVOKE_DEFAULT')
 
-        bpy.ops.screen.area_move('INVOKE_DEFAULT')
-
-
-        # del context.scene.M3['asset_browser_prefs']
+        del context.scene.M3['asset_browser_prefs']
 
         return {'FINISHED'}
 
