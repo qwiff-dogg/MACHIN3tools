@@ -63,11 +63,11 @@ class ToggleRegion(bpy.types.Operator):
         if context.screen.name not in self.prefs:
             # print("initiating asset browser prefs for screen", screen_name)
 
-            empty = {'libref': 'ALL',
+            empty = {'area_height': 250,
+                     'libref': 'ALL',
                      'catalog_id': '',
                      'import_method': 'FOLLOW_PREFS',
                      'header_align': 'TOP',
-                     'area_height': 250,
                      'show_region_toolbar': True,
                      'show_region_ui': False}
 
@@ -303,31 +303,27 @@ class ToggleRegion(bpy.types.Operator):
 
         # get settings
         below_area_split = 'ASSET_BROWSER'
-        top_area_split = 'IMAGE_EDITOR'
+        top_area_split = 'ASSET_BROWSER'
         is_bottom = region_type == 'ASSET_BOTTOM'
 
 
-        # TODO: only close the type of area you would open
-        # ####: for instance, don't close a fucking time line if you would open an asset browser
-
-        
         # CLOSE EXISTING AREA at the BOTTOM or TOP, if present, and before you do, fetch it's properties and store them, for later restoration
 
-        if (is_bottom and areas['BOTTOM']) or (not is_bottom and areas['TOP']):
-            close_area = areas['BOTTOM' if is_bottom else 'TOP']
+        close_area = areas['BOTTOM' if is_bottom else 'TOP']
 
+        if close_area and self.is_close_area_of_type(close_area, 'ASSET_BROWSER'):
             for space in close_area.spaces:
                 if space.type == 'FILE_BROWSER':
                     if space.params:
                         libref = get_asset_library_reference(space.params)
                         import_method = get_asset_import_method(space.params)
 
+                        self.prefs[screen_name][region_type]['area_height'] = close_area.height
                         self.prefs[screen_name][region_type]['libref'] = libref
                         self.prefs[screen_name][region_type]['import_method'] = import_method
                         self.prefs[screen_name][region_type]['catalog_id'] = space.params.catalog_id
                         self.prefs[screen_name][region_type]['show_region_toolbar'] = space.show_region_toolbar
                         self.prefs[screen_name][region_type]['show_region_ui'] = space.show_region_ui
-                        self.prefs[screen_name][region_type]['area_height'] = close_area.height
 
             for region in close_area.regions:
                 if region.type == 'HEADER':
@@ -412,6 +408,18 @@ class ToggleRegion(bpy.types.Operator):
         # TODO?
         # show_region_header True
         # show_region_tool_header True
+
+    def is_close_area_of_type(self, area, area_type='ASSET_BROWSER'):  
+        '''
+        compare passed in area with area_type arg
+        note, that for ASSET_BROWSER you hace to check the ui_type to, as it's still just a FILE_BROWSER as of Blender 4
+        '''
+
+        if area_type == 'ASSET_BROWSER':
+            return area.type == 'FILE_BROWSER' and area.ui_type == 'ASSETS'
+
+        else:
+            return area.type == area_type
 
     def warp_mouse_to_border(self, context, area, region_type):
         '''
