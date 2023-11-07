@@ -39,7 +39,8 @@ class ToggleRegion(bpy.types.Operator):
         area = self.toggle_region(context, areas, regions, region_type=region_type, debug=True)
 
         # warp the mouse to the region border, so it can be adjusted right away if the user choses so
-        self.warp_mouse_to_border(context, area, region_type)
+        if get_prefs().region_warp_mouse_to_asset_border:
+            self.warp_mouse_to_border(context, area, region_type)
 
         # context.area.tag_redraw()
         return {'FINISHED'}
@@ -238,7 +239,7 @@ class ToggleRegion(bpy.types.Operator):
         screen_name = context.screen.name
 
         # get settingsbpy.ops.screen.back_to_previous()
-        asset_shelf = False
+        asset_shelf = get_prefs().region_toggle_assetshelf
         scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
 
 
@@ -292,9 +293,9 @@ class ToggleRegion(bpy.types.Operator):
 
 
                 else:
-                    return self.toggle_area(context, areas, region_type, screen_name)
+                    return self.toggle_area(context, areas, region_type, screen_name, scale)
 
-    def toggle_area(self, context, areas, region_type, screen_name):
+    def toggle_area(self, context, areas, region_type, screen_name, scale):
         '''
         "toggle" area, by splitting the current area or closing the one above or below the current one
         '''

@@ -263,6 +263,16 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     hide_wire_objects_when_assembling_instance_collection: BoolProperty(name="Hide Wire Objects when assembling Collection Instance", default=True)
 
 
+    # Region tool
+
+    region_show: BoolProperty(name="Show Region Preferences", default=False)
+
+    region_toggle_assetshelf: BoolProperty(name="Toggle the Asset Shelf, instead of the Browser", default=False)
+    region_toggle_assetbrowser_top: BoolProperty(name="Toggle the Asset Browser at the Top", default=True)
+    region_toggle_assetbrowser_bottom: BoolProperty(name="Toggle the Asset Browser at the Bottom", default=True)
+    region_warp_mouse_to_asset_border: BoolProperty(name="Warp Mouse to Asset Browser Border", default=False)
+
+
     # Render tool
 
     render_show: BoolProperty(name="Show Render Preferences", default=False)
@@ -452,6 +462,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     activate_smart_drive: BoolProperty(name="Smart Drive", default=False, update=update_activate_smart_drive)
     activate_assetbrowser_tools: BoolProperty(name="Assetbrowser Tools", default=False, update=update_activate_assetbrowser_tools)
     activate_filebrowser_tools: BoolProperty(name="Filebrowser Tools", default=False, update=update_activate_filebrowser_tools)
+    activate_region: BoolProperty(name="Toggle Region", default=True, update=update_activate_region)
     activate_render: BoolProperty(name="Render", default=False, update=update_activate_render)
     activate_smooth: BoolProperty(name="Smooth", default=False, update=update_activate_smooth)
     activate_clipping_toggle: BoolProperty(name="Clipping Toggle", default=False, update=update_activate_clipping_toggle)
@@ -460,7 +471,6 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     activate_apply: BoolProperty(name="Apply", default=False, update=update_activate_apply)
     activate_select: BoolProperty(name="Select", default=False, update=update_activate_select)
     activate_mesh_cut: BoolProperty(name="Mesh Cut", default=False, update=update_activate_mesh_cut)
-    activate_region: BoolProperty(name="Toggle Region", default=True, update=update_activate_region)
     activate_thread: BoolProperty(name="Thread", default=False, update=update_activate_thread)
     activate_unity: BoolProperty(name="Unity", default=False, update=update_activate_unity)
     activate_customize: BoolProperty(name="Customize", default=False, update=update_activate_customize)
@@ -572,6 +582,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
         draw_split_row(self, column, prop='activate_smart_drive', text='Smart Drive', label='Use one Object to drive another', factor=0.25)
         draw_split_row(self, column, prop='activate_assetbrowser_tools', text='Assetbrowser Tools', label='Easy Assemly Asset Creation and Import via the Assetbrowser', factor=0.25)
         draw_split_row(self, column, prop='activate_filebrowser_tools', text='Filebrowser Tools', label='Additional Tools/Shortcuts for the Filebrowser', factor=0.25)
+        draw_split_row(self, column, prop='activate_region', text='Toggle Region', label='Toggle 3D View Toolbar, Sidebar and Assetbrowsers using a single T keymap, depending on mouse position', factor=0.25)
         draw_split_row(self, column, prop='activate_render', text='Render', label='Tools for efficient, iterative rendering', factor=0.25)
         draw_split_row(self, column, prop='activate_smooth', text='Smooth', label='Toggle Smoothing in Korean Bevel and SubD workflows', factor=0.25)
         draw_split_row(self, column, prop='activate_clipping_toggle', text='Clipping Toggle', label='Viewport Clipping Plane Toggle', factor=0.25)
@@ -580,7 +591,6 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
         draw_split_row(self, column, prop='activate_apply', text='Apply', label='Apply Transformations while keeping the Bevel Width as well as the Child Transformations unchanged', factor=0.25)
         draw_split_row(self, column, prop='activate_select', text='Select', label='Select Center Objects or Wire Objects', factor=0.25)
         draw_split_row(self, column, prop='activate_mesh_cut', text='Mesh Cut', label='Knife Intersect a Mesh-Object, using another one', factor=0.25)
-        draw_split_row(self, column, prop='activate_region', text='Toggle Region', label='Toggle 3D View Regions using a single keymap, depending on mouse position', factor=0.25)
         draw_split_row(self, column, prop='activate_thread', text='Thread', label='Easily turn Cylinder Faces into Thread', factor=0.25)
         draw_split_row(self, column, prop='activate_unity', text='Unity', label='Unity related Tools', factor=0.25)
 
@@ -741,6 +751,26 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
 
                 if getattr(bpy.types, "MACHIN3_MT_save_pie", False):
                     draw_split_row(self, column, prop='show_assembly_asset_creation_in_save_pie', label='Show Assembly Asset Creation in Save Pie')
+
+
+        # TOOGLE REGION
+
+        if getattr(bpy.types, "MACHIN3_OT_toggle_region", False):
+            bb = b.box()
+            bb.prop(self, 'region_show', text="Toggle Region", icon='TRIA_DOWN' if self.region_show else 'TRIA_RIGHT', emboss=False)
+
+            if self.region_show:
+                column = bb.column(align=True)
+
+                draw_split_row(self, column, prop='region_toggle_assetshelf', label='Toggle Asset Shelf instead of the Browser', info='This still extremely limited in Blender 4.0, and practically unusable')
+
+                if not self.region_toggle_assetshelf:
+                    draw_split_row(self, column, prop='region_toggle_assetbrowser_top', label='Toggle Asset Browser at Top of 3D View')
+                    draw_split_row(self, column, prop='region_toggle_assetbrowser_bottom', label='Toggle Asset Browser at Bottom of 3D View')
+
+                    if any([self.region_toggle_assetbrowser_top, self.region_toggle_assetbrowser_bottom]):
+                        draw_split_row(self, column, prop='region_warp_mouse_to_asset_border', label='Warp Mouse to Assetbrowser Border')
+
 
         # RENDER
 
