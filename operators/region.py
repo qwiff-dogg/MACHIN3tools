@@ -139,7 +139,7 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
     def get_regions(self, area, debug=False):
         '''
         collect toolbar, sidebar, redo panel and asset shelf regions in a dict
-        ignore others like WINDOW, HEADR, ASSET_SHELF_HEADER
+        ignore others like WINDOW, HEADER, ASSET_SHELF_HEADER
         '''
         
         regions = {}
