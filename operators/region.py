@@ -70,12 +70,25 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
             print("initiating asset browser prefs for screen", context.screen.name)
 
             empty = {'area_height': 250,
+
                      'libref': 'ALL',
                      'catalog_id': '',
                      'import_method': 'FOLLOW_PREFS',
+                     'display_size': 96 if bpy.app.version >= (4, 0, 0) else 'SMALL',
+
                      'header_align': 'TOP',
+
                      'show_region_toolbar': True,
-                     'show_region_tool_props': False}
+                     'show_region_tool_props': False,
+
+                     'filter_search': '',
+                     'filter_action': True,
+                     'filter_group': True,
+                     'filter_material': True,
+                     'filter_node_tree': True,
+                     'filter_object': True,
+                     'filter_world': True,
+                     }
 
             self.prefs[context.screen.name] = {'ASSET_TOP': empty,
                                                'ASSET_BOTTOM': empty.copy()}
@@ -361,18 +374,35 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
 
                 for new_space in new_area.spaces:
                     if new_space.type == 'FILE_BROWSER':
+
+                        # restore settings 
+
                         if new_space.params:
                             if screen_name in self.prefs:
+
+
+                                # fetch them
                                 libref = self.prefs[screen_name][region_type]['libref']
                                 import_method = self.prefs[screen_name][region_type]['import_method']
                                 catalog_id = self.prefs[screen_name][region_type]['catalog_id']
+                                display_size = self.prefs[screen_name][region_type]['display_size']
+
                                 show_region_toolbar = self.prefs[screen_name][region_type]['show_region_toolbar']
                                 show_region_tool_props = self.prefs[screen_name][region_type]['show_region_tool_props']
 
+                                filter_search = self.prefs[screen_name][region_type]['filter_search']
+                                filter_action = self.prefs[screen_name][region_type]['filter_action']
+                                filter_group = self.prefs[screen_name][region_type]['filter_group']
+                                filter_material = self.prefs[screen_name][region_type]['filter_material']
+                                filter_node_tree = self.prefs[screen_name][region_type]['filter_node_tree']
+                                filter_object = self.prefs[screen_name][region_type]['filter_object']
+                                filter_world = self.prefs[screen_name][region_type]['filter_world']
+
+                                # then set them
                                 set_asset_library_reference(new_space.params, libref)
                                 set_asset_import_method(new_space.params, import_method)
-
                                 new_space.params.catalog_id = catalog_id
+                                new_space.params.display_size = display_size
 
                                 # NOTE: some very odd behavior here, show_region_toolbar needs to be negated to maintain whatever was set, but even that may not always work
                                 # new_space.show_region_toolbar = not show_region_toolbar
@@ -383,13 +413,21 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
                                 # set the 'N panel' too, which in the FILE_BROWSER is called show_region_tool_props, not show_region_UI like in the 3d view!
                                 new_space.show_region_tool_props = show_region_tool_props
 
+                                new_space.params.filter_search = filter_search
+                                new_space.params.filter_asset_id.filter_action = filter_action
+                                new_space.params.filter_asset_id.filter_group = filter_group
+                                new_space.params.filter_asset_id.filter_material = filter_material
+                                new_space.params.filter_asset_id.filter_node_tree = filter_node_tree
+                                new_space.params.filter_asset_id.filter_object = filter_object
+                                new_space.params.filter_asset_id.filter_world = filter_world
 
-                            # flip HEADER region if necessary
-                            for region in new_area.regions:
-                                if region.type == 'HEADER':
-                                    if region.alignment != self.prefs[screen_name][region_type]['header_align']:
-                                        with context.temp_override(area=new_area, region=region):
-                                            bpy.ops.screen.region_flip()
+                                # finalyl flip the HEADER region if necessary
+                                for region in new_area.regions:
+                                    if region.type == 'HEADER':
+                                        if region.alignment != self.prefs[screen_name][region_type]['header_align']:
+                                            with context.temp_override(area=new_area, region=region):
+                                                bpy.ops.screen.region_flip()
+
 
                         # NOTE: space.params can be None, so we can't set Library, or any other of the spaces settings
                         # ####: however, if you manually turn the 3d view into an asset browser and back into a 3d view again, then params will be available
@@ -432,11 +470,22 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
                     import_method = get_asset_import_method(space.params)
 
                     context.scene.M3['asset_browser_prefs'][screen_name][region_type]['area_height'] = area.height
+
                     context.scene.M3['asset_browser_prefs'][screen_name][region_type]['libref'] = libref
                     context.scene.M3['asset_browser_prefs'][screen_name][region_type]['import_method'] = import_method
                     context.scene.M3['asset_browser_prefs'][screen_name][region_type]['catalog_id'] = space.params.catalog_id
+                    context.scene.M3['asset_browser_prefs'][screen_name][region_type]['display_size'] = space.params.display_size
+
                     context.scene.M3['asset_browser_prefs'][screen_name][region_type]['show_region_toolbar'] = space.show_region_toolbar
                     context.scene.M3['asset_browser_prefs'][screen_name][region_type]['show_region_tool_props'] = space.show_region_tool_props
+
+                    context.scene.M3['asset_browser_prefs'][screen_name][region_type]['filter_search'] = space.params.filter_search
+                    context.scene.M3['asset_browser_prefs'][screen_name][region_type]['filter_action'] = space.params.filter_asset_id.filter_action
+                    context.scene.M3['asset_browser_prefs'][screen_name][region_type]['filter_group'] = space.params.filter_asset_id.filter_group
+                    context.scene.M3['asset_browser_prefs'][screen_name][region_type]['filter_material'] = space.params.filter_asset_id.filter_material
+                    context.scene.M3['asset_browser_prefs'][screen_name][region_type]['filter_node_tree'] = space.params.filter_asset_id.filter_node_tree
+                    context.scene.M3['asset_browser_prefs'][screen_name][region_type]['filter_object'] = space.params.filter_asset_id.filter_object
+                    context.scene.M3['asset_browser_prefs'][screen_name][region_type]['filter_world'] = space.params.filter_asset_id.filter_world
 
         for region in area.regions:
             if region.type == 'HEADER':
@@ -617,15 +666,45 @@ class AreaDumper(bpy.types.Operator):
         # del context.scene.M3['asset_browser_prefs']
 
 
+
         area = context.area
-        #
-        # for space in area.spaces:
-        #     if space.type == area.type:
-        #         for d in dir(space):
-        #             print("", d, getattr(space, d))
+
+        for space in area.spaces:
+            if space.type == area.type:
+                # for d in dir(space):
+                #     print("", d, getattr(space, d))
+
+                if space.params:
+                    print(space.params)
+
+                    # for d in dir(space.params):
+                    #     print(d, getattr(space.params, d))
 
 
-        print("context.region.type:", context.region.type)
+                    # space.params.display_size = 120
+
+                    # space.params.filter_search = 'hello'
+
+                    filter_id = space.params.filter_asset_id
+
+                    print(filter_id.filter_action)
+                    print(filter_id.filter_group)
+                    print(filter_id.filter_material)
+                    print(filter_id.filter_node_tree)
+                    print(filter_id.filter_object)
+                    print(filter_id.filter_world)
+
+                    filter_id.filter_material = False
+
+                    # filter_asset_id = space.params.filter_asset_id
+                    #
+                    # for d in dir(filter_asset_id):
+                    #     print(d, getattr(filter_asset_id, d))
+
+
+
+
+
 
 
 
