@@ -334,6 +334,8 @@ class ToggleRegion(bpy.types.Operator):
                         self.prefs[screen_name][region_type]['libref'] = libref
                         self.prefs[screen_name][region_type]['import_method'] = import_method
                         self.prefs[screen_name][region_type]['catalog_id'] = space.params.catalog_id
+                        self.prefs[screen_name][region_type]['show_region_toolbar'] = space.show_region_toolbar
+                        self.prefs[screen_name][region_type]['show_region_ui'] = space.show_region_ui
                         self.prefs[screen_name][region_type]['area_height'] = close_area.height
 
             for region in close_area.regions:
@@ -372,21 +374,26 @@ class ToggleRegion(bpy.types.Operator):
                 new_area.type = 'FILE_BROWSER'
                 new_area.ui_type = 'ASSETS'
 
-                # NOTE: some very odd behavior here, show_region_toolbar needs to be negated to maintain whatever 
                 for new_space in new_area.spaces:
                     if new_space.type == 'FILE_BROWSER':
-                        new_space.show_region_toolbar = not new_space.show_region_toolbar
-
                         if new_space.params:
                             if screen_name in self.prefs:
                                 libref = self.prefs[screen_name][region_type]['libref']
                                 import_method = self.prefs[screen_name][region_type]['import_method']
                                 catalog_id = self.prefs[screen_name][region_type]['catalog_id']
+                                show_region_toolbar = self.prefs[screen_name][region_type]['show_region_toolbar']
+                                show_region_ui = self.prefs[screen_name][region_type]['show_region_ui']
 
                                 set_asset_library_reference(new_space.params, libref)
                                 set_asset_import_method(new_space.params, import_method)
 
                                 new_space.params.catalog_id = catalog_id
+
+                                # NOTE: some very odd behavior here, show_region_toolbar needs to be negated to maintain whatever was set, but even that may not always work
+                                new_space.show_region_toolbar = not show_region_toolbar
+
+                                # NOTE: this one doesn't work at all, will always be closed, no matter what I set
+                                new_space.show_region_ui = show_region_ui
 
                             # flip HEADER region if necessary
                             for region in new_area.regions:
