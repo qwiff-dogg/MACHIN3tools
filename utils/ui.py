@@ -38,6 +38,88 @@ def get_mouse_pos(self, context, event, hud=True, hud_offset=(20, 20)):
         self.HUD_y = self.mouse_pos.y + hud_offset[1] * scale
 
 
+def wrap_mouse(self, context, x=False, y=False):
+    '''
+    wrap mouse to other side of the region
+    works on self.mouse_pos which are expected to exist, and which are in region space of course
+    '''
+
+    width = context.region.width
+    height = context.region.height
+
+    # copy the curretn mouse location
+    mouse = self.mouse_pos.copy()
+
+    # check for x wrapping
+    if x:
+        if mouse.x <= 0:
+            mouse.x = width - 10
+
+        elif mouse.x >= width - 1:  # the -1 is required for full screen, where the max region width is never passed
+            mouse.x = 10
+
+    # check for y wrapping, as long as x wasn't wrapped already
+    if y and mouse == self.mouse_pos:
+        if mouse.y <= 0:
+            mouse.y = height - 10
+
+        elif mouse.y >= height - 1:
+            mouse.y = 10
+
+    # actually warp the mouse ot the other side now, IF mouse differs from self.mouse_pos now
+    if mouse != self.mouse_pos:
+        # print()
+        # print("warping --- woooosh")
+        warp_mouse(self, context, mouse)
+
+
+def warp_mouse(self, context, co2d=Vector(), region=True, hud_offset=(20, 20)):
+    '''
+    warp mouse to passed in co2d
+       which by default is expected to be in region space
+       and so will be converted to window space accordingly, which is what context.window.cursior_warp() expects
+    '''
+
+    coords = get_window_space_co2d(context, co2d) if region else co2d
+
+    # engage!
+    context.window.cursor_warp(int(coords.x), int(coords.y))
+
+    # set mouse_pos prop on operator
+    self.mouse_pos = co2d if region else get_region_space_co2d(context, co2d)
+
+    # self.last_mouse too, if present
+    if getattr(self, 'last_mouse', None):
+        self.last_mouse = self.mouse_pos
+
+    # HUD coords too, if present
+    if getattr(self, 'HUD_x', None):
+        scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
+
+        self.HUD_x = self.mouse_pos.x + hud_offset[0] * scale
+        self.HUD_y = self.mouse_pos.y + hud_offset[1] * scale
+
+
+def get_window_space_co2d(context, co2d=Vector()):
+    '''
+    using the region x and y, convert the passed in (mouse) coords from region into absolute (blender-window) space
+    '''
+
+    return co2d + Vector((context.region.x, context.region.y))
+
+
+def get_region_space_co2d(context, co2d=Vector()):
+    '''
+    using the region x and y, convert the passed in (mouse) coords from absolute (blender-window) to region space
+    '''
+
+    return Vector((context.region.x, context.region.y)) - co2d
+
+
+
+
+
+
 # CURSOR - TODO: remove
 
 def init_cursor(self, event, offsetx=0, offsety=20):

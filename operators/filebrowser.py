@@ -19,7 +19,8 @@ class Open(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.area.type == 'FILE_BROWSER'
+        if context.area:
+            return context.area.type == 'FILE_BROWSER'
 
     def execute(self, context):
         space = context.space_data
@@ -81,7 +82,8 @@ class Toggle(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.area.type == 'FILE_BROWSER'
+        if context.area:
+            return context.area.type == 'FILE_BROWSER'
 
     def execute(self, context):
         params = context.space_data.params
@@ -163,7 +165,8 @@ class CycleThumbs(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.area.type == 'FILE_BROWSER' and context.space_data.params.display_type == 'THUMBNAIL'
+        if context.area:
+            return context.area.type == 'FILE_BROWSER' and context.space_data.params.display_type == 'THUMBNAIL'
 
     # 3  
 

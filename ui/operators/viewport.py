@@ -33,7 +33,8 @@ class ViewAxis(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.space_data.type == 'VIEW_3D'
+        if context.space_data:
+            return context.space_data.type == 'VIEW_3D'
 
     def invoke(self, context, event):
         m3 = context.scene.M3
@@ -162,7 +163,8 @@ class SmartViewCam(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.space_data.type == 'VIEW_3D'
+        if context.space_data:
+            return context.space_data.type == 'VIEW_3D'
 
     def invoke(self, context, event):
         cams = [obj for obj in context.scene.objects if obj.type == "CAMERA"]
@@ -202,7 +204,8 @@ class NextCam(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.space_data.type == 'VIEW_3D' and context.space_data.region_3d.view_perspective == 'CAMERA'
+        if context.space_data:
+            return context.space_data.type == 'VIEW_3D' and context.space_data.region_3d.view_perspective == 'CAMERA'
 
     def execute(self, context):
         cams = sorted([obj for obj in context.scene.objects if obj.type == "CAMERA"], key=lambda x: x.name)
@@ -326,7 +329,8 @@ class ResetViewport(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.space_data.type == 'VIEW_3D'
+        if context.space_data:
+            return context.space_data.type == 'VIEW_3D'
 
     def execute(self, context):
         context.space_data.region_3d.is_orthographic_side_view = False
