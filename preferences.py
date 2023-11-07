@@ -460,7 +460,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     activate_apply: BoolProperty(name="Apply", default=False, update=update_activate_apply)
     activate_select: BoolProperty(name="Select", default=False, update=update_activate_select)
     activate_mesh_cut: BoolProperty(name="Mesh Cut", default=False, update=update_activate_mesh_cut)
-    activate_region: BoolProperty(name="Toggle Region", default=False, update=update_activate_region)
+    activate_region: BoolProperty(name="Toggle Region", default=True, update=update_activate_region)
     activate_thread: BoolProperty(name="Thread", default=False, update=update_activate_thread)
     activate_unity: BoolProperty(name="Unity", default=False, update=update_activate_unity)
     activate_customize: BoolProperty(name="Customize", default=False, update=update_activate_customize)
