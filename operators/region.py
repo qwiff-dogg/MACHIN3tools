@@ -1,6 +1,6 @@
 import bpy
 from bpy.utils import time_from_frame
-from .. utils.ui import get_mouse_pos
+from .. utils.ui import get_mouse_pos, warp_mouse, get_window_space_co2d
 from .. utils.system import printd
 from .. utils.registration import get_prefs
 from .. utils.workspace import is_fullscreen, get_assetbrowser_space
@@ -10,7 +10,7 @@ from .. colors import red, yellow
 
 class ToggleRegion(bpy.types.Operator):
     bl_idname = "machin3.toggle_region"
-    bl_label = "MACHIN3: Toggle Reagion"
+    bl_label = "MACHIN3: Toggle Region"
     bl_description = "Toggle 3D View Region based on Mouse Position"
     bl_options = {'INTERNAL'}
 
@@ -36,7 +36,19 @@ class ToggleRegion(bpy.types.Operator):
         region_type = self.get_region_type_from_mouse(context, debug=False)
 
         # then toggle it
-        self.toggle_region(context, areas, regions, region_type=region_type, debug=True)
+        area = self.toggle_region(context, areas, regions, region_type=region_type, debug=True)
+
+        # warp the mouse to the region border, so it can be adjusted right away if the users choses so
+        # NOTE: unfortunately my attempts to invoke screen.area_move() failed due to wrong context, even with various overrides
+        if area and region_type in ['ASSET_BOTTOM', 'ASSET_TOP']:
+            mouse = get_window_space_co2d(context, self.mouse_pos)
+            if region_type == 'ASSET_BOTTOM':
+                mouse.y = area.y + area.height
+
+            else:
+                mouse.y = area.y
+
+            warp_mouse(self, context, mouse, region=False)
 
         # context.area.tag_redraw()
         return {'FINISHED'}
@@ -228,7 +240,6 @@ class ToggleRegion(bpy.types.Operator):
 
 
         # get context
-        area = context.area
         space = context.space_data
         region = regions[region_type] if region_type in regions else None
         screen_name = context.screen.name
@@ -280,7 +291,7 @@ class ToggleRegion(bpy.types.Operator):
                 space.show_region_asset_shelf = not space.show_region_asset_shelf
 
 
-            # SPLIT AREA 
+            # SPLIT or CLOSE AREA 
 
             else:
 
@@ -291,92 +302,101 @@ class ToggleRegion(bpy.types.Operator):
 
 
                 else:
-                    is_bottom = region_type == 'ASSET_BOTTOM'
-                    # print(f"splitting the area to create assetbrowser at {'BOTTOM' if is_bottom else 'TOP'}")
+                    return self.toggle_area(context, areas, region_type, screen_name, asset_split_factor)
+
+    def toggle_area(self, context, areas, region_type, screen_name, asset_split_factor):
+        '''
+        something
+        '''
+        
+        is_bottom = region_type == 'ASSET_BOTTOM'
+        # print(f"splitting the area to create assetbrowser at {'BOTTOM' if is_bottom else 'TOP'}")
 
 
-                    # TODO: only close the type of area you would open
-                    # ####: for instance, don't close a fucking time line if you would open an asset browser
+        # TODO: only close the type of area you would open
+        # ####: for instance, don't close a fucking time line if you would open an asset browser
 
-                    
-                    # CLOSE EXISTING AREA at the BOTTOM or TOP, if present, and before you do, fetch it's properties and store them, for later restoration
+        
+        # CLOSE EXISTING AREA at the BOTTOM or TOP, if present, and before you do, fetch it's properties and store them, for later restoration
 
-                    if (is_bottom and areas['BOTTOM']) or (not is_bottom and areas['TOP']):
-                        close_area = areas['BOTTOM' if is_bottom else 'TOP']
+        if (is_bottom and areas['BOTTOM']) or (not is_bottom and areas['TOP']):
+            close_area = areas['BOTTOM' if is_bottom else 'TOP']
 
-                        for space in close_area.spaces:
-                            if space.type == 'FILE_BROWSER':
-                                if space.params:
-                                    libref = get_asset_library_reference(space.params)
-                                    import_method = get_asset_import_method(space.params)
+            for space in close_area.spaces:
+                if space.type == 'FILE_BROWSER':
+                    if space.params:
+                        libref = get_asset_library_reference(space.params)
+                        import_method = get_asset_import_method(space.params)
 
-                                    self.prefs[screen_name][region_type]['libref'] = libref
-                                    self.prefs[screen_name][region_type]['import_method'] = import_method
-                                    self.prefs[screen_name][region_type]['catalog_id'] = space.params.catalog_id
+                        self.prefs[screen_name][region_type]['libref'] = libref
+                        self.prefs[screen_name][region_type]['import_method'] = import_method
+                        self.prefs[screen_name][region_type]['catalog_id'] = space.params.catalog_id
 
-                        for region in close_area.regions:
-                            if region.type == 'HEADER':
-                                self.prefs[screen_name][region_type]['header_align'] = region.alignment
+            for region in close_area.regions:
+                if region.type == 'HEADER':
+                    self.prefs[screen_name][region_type]['header_align'] = region.alignment
 
 
-                        with context.temp_override(area=close_area):
-                            bpy.ops.screen.area_close()
+            with context.temp_override(area=close_area):
+                bpy.ops.screen.area_close()
 
- 
-                    # OPEN NEW AREA at BOTTOM or TOP
 
-                    else:
+        # OPEN NEW AREA at BOTTOM or TOP
 
-                        # fetch all exsiting areas
-                        all_areas = [area for area in context.screen.areas]
+        else:
 
-                        # do the split
-                        bpy.ops.screen.area_split(direction='HORIZONTAL', factor=asset_split_factor if is_bottom else 1 - asset_split_factor)
+            # fetch all exsiting areas
+            all_areas = [area for area in context.screen.areas]
 
-                        # find the new area
-                        new_areas = [area for area in context.screen.areas if area not in all_areas]
+            # do the split
+            bpy.ops.screen.area_split(direction='HORIZONTAL', factor=asset_split_factor if is_bottom else 1 - asset_split_factor)
 
-                        # and make it an asset browser
-                        if new_areas:
-                            new_area = new_areas[0]
-                            new_area.type = 'FILE_BROWSER'
-                            new_area.ui_type = 'ASSETS'
+            # find the new area
+            new_areas = [area for area in context.screen.areas if area not in all_areas]
 
-                            # NOTE: some very odd behavior here, show_region_toolbar needs to be negated to maintain whatever 
-                            for new_space in new_area.spaces:
-                                if new_space.type == 'FILE_BROWSER':
-                                    new_space.show_region_toolbar = not new_space.show_region_toolbar
+            # and make it an asset browser
+            if new_areas:
+                new_area = new_areas[0]
+                new_area.type = 'FILE_BROWSER'
+                new_area.ui_type = 'ASSETS'
 
-                                    if new_space.params:
-                                        if screen_name in self.prefs:
-                                            libref = self.prefs[screen_name][region_type]['libref']
-                                            import_method = self.prefs[screen_name][region_type]['import_method']
-                                            catalog_id = self.prefs[screen_name][region_type]['catalog_id']
+                # NOTE: some very odd behavior here, show_region_toolbar needs to be negated to maintain whatever 
+                for new_space in new_area.spaces:
+                    if new_space.type == 'FILE_BROWSER':
+                        new_space.show_region_toolbar = not new_space.show_region_toolbar
 
-                                            set_asset_library_reference(new_space.params, libref)
-                                            set_asset_import_method(new_space.params, import_method)
+                        if new_space.params:
+                            if screen_name in self.prefs:
+                                libref = self.prefs[screen_name][region_type]['libref']
+                                import_method = self.prefs[screen_name][region_type]['import_method']
+                                catalog_id = self.prefs[screen_name][region_type]['catalog_id']
 
-                                            new_space.params.catalog_id = catalog_id
+                                set_asset_library_reference(new_space.params, libref)
+                                set_asset_import_method(new_space.params, import_method)
 
-                                        # flip HEADER region if necessary
-                                        for region in new_area.regions:
-                                            if region.type == 'HEADER':
-                                                if region.alignment != self.prefs[screen_name][region_type]['header_align']:
-                                                    with context.temp_override(area=new_area, region=region):
-                                                        bpy.ops.screen.region_flip()
+                                new_space.params.catalog_id = catalog_id
 
-                                    # NOTE: space.params can be None, so we can't set Library, or any other of the spaces settings
-                                    # ####: however, if you manually turn the 3d view into an asset browser and back into a 3d view again, then params will be available
-                                    else:
-                                        coords = (context.region.width / 2, 100 * scale if region_type == 'ASSET_BOTTOM' else context.region.height - (80 * scale + context.region.height * asset_split_factor))
+                            # flip HEADER region if necessary
+                            for region in new_area.regions:
+                                if region.type == 'HEADER':
+                                    if region.alignment != self.prefs[screen_name][region_type]['header_align']:
+                                        with context.temp_override(area=new_area, region=region):
+                                            bpy.ops.screen.region_flip()
 
-                                        bpy.ops.machin3.draw_label(text="WARNING: Assetbrowser couldn't be set up yet", coords=coords, color=red, alpha=1, time=3)
+                        # NOTE: space.params can be None, so we can't set Library, or any other of the spaces settings
+                        # ####: however, if you manually turn the 3d view into an asset browser and back into a 3d view again, then params will be available
+                        else:
+                            coords = (context.region.width / 2, 100 * scale if region_type == 'ASSET_BOTTOM' else context.region.height - (80 * scale + context.region.height * asset_split_factor))
 
-                                        coords = (context.region.width / 2, 80 * scale if region_type == 'ASSET_BOTTOM' else context.region.height - (100 * scale + context.region.height * asset_split_factor))
-                                        bpy.ops.machin3.draw_label(text="TO FIX IT, DO THIS: Change the 3D View into an Asset browser, and back again", coords=coords, color=yellow, alpha=1, time=4)
+                            bpy.ops.machin3.draw_label(text="WARNING: Assetbrowser couldn't be set up yet", coords=coords, color=red, alpha=1, time=3)
 
-                                        coords = (context.region.width / 2, 60 * scale if region_type == 'ASSET_BOTTOM' else context.region.height - (120 * scale + context.region.height * asset_split_factor))
-                                        bpy.ops.machin3.draw_label(text="Then save the blend file", coords=coords, color=yellow, alpha=1, time=5)
+                            coords = (context.region.width / 2, 80 * scale if region_type == 'ASSET_BOTTOM' else context.region.height - (100 * scale + context.region.height * asset_split_factor))
+                            bpy.ops.machin3.draw_label(text="TO FIX IT, DO THIS: Change the 3D View into an Asset browser, and back again", coords=coords, color=yellow, alpha=1, time=4)
+
+                            coords = (context.region.width / 2, 60 * scale if region_type == 'ASSET_BOTTOM' else context.region.height - (120 * scale + context.region.height * asset_split_factor))
+                            bpy.ops.machin3.draw_label(text="Then save the blend file", coords=coords, color=yellow, alpha=1, time=5)
+
+                return new_area
 
 
         # TODO?
@@ -396,19 +416,14 @@ class AreaDumper(bpy.types.Operator):
         return True
 
     def execute(self, context):
+        print(context.area.type)
+        print(context.space_data.type)
+        print(context.region.type)
 
- 
+        bpy.ops.screen.area_move('INVOKE_DEFAULT')
+
 
         # del context.scene.M3['asset_browser_prefs']
-
-        for region in context.area.regions:
-            if region.type == 'HEADER':
-                with context.temp_override(region=region):
-                    print("flipping", region, "of type", region.type)
-
-                    bpy.ops.screen.region_flip()
-
-
 
         return {'FINISHED'}
 
@@ -440,7 +455,7 @@ class AreaDumper(bpy.types.Operator):
         #
         #             for d in dir(space.params):
         #                 print("", d, getattr(space.params, d))
-        #
+
         print()
         print("regions")
         for region in area.regions:
