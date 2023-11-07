@@ -700,6 +700,7 @@ def draw_screen_cast_HUD(context):
 
     font = 0
     scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
+    gap_y = 5 * scale
 
     # initiate the horizontal offset based on the presence of the tools bar
     tools = [r for r in context.area.regions if r.type == 'TOOLS']
@@ -710,7 +711,7 @@ def draw_screen_cast_HUD(context):
 
     # initiate the vertical offset based on the height of the redo panel, use a 50px base offset
     redo = [r for r in context.area.regions if r.type == 'HUD']
-    offset_y = redo[0].height + 50 if redo else 50
+    offset_y = redo[0].y + redo[0].height + gap_y if redo else gap_y
 
     # emphasize the last op
     emphasize = 1.25
@@ -745,7 +746,7 @@ def draw_screen_cast_HUD(context):
         text = f"{label}: {prop}" if prop else label
 
         x = offset_x + addon_offset_x
-        y = offset_y * scale if idx == 0 else y + (blf.dimensions(font, text)[1] + vgap)
+        y = offset_y if idx == 0 else y + (blf.dimensions(font, text)[1] + vgap)
 
         blf.size(font, size)
         blf.color(font, *color, alpha)
