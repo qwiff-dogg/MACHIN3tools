@@ -38,17 +38,8 @@ class ToggleRegion(bpy.types.Operator):
         # then toggle it
         area = self.toggle_region(context, areas, regions, region_type=region_type, debug=True)
 
-        # warp the mouse to the region border, so it can be adjusted right away if the users choses so
-        # NOTE: unfortunately my attempts to invoke screen.area_move() failed due to wrong context, even with various overrides
-        if area and region_type in ['ASSET_BOTTOM', 'ASSET_TOP']:
-            mouse = get_window_space_co2d(context, self.mouse_pos)
-            if region_type == 'ASSET_BOTTOM':
-                mouse.y = area.y + area.height
-
-            else:
-                mouse.y = area.y
-
-            warp_mouse(self, context, mouse, region=False)
+        # warp the mouse to the region border, so it can be adjusted right away if the user choses so
+        self.warp_mouse_to_border(context, area, region_type)
 
         # context.area.tag_redraw()
         return {'FINISHED'}
@@ -421,6 +412,22 @@ class ToggleRegion(bpy.types.Operator):
         # TODO?
         # show_region_header True
         # show_region_tool_header True
+
+    def warp_mouse_to_border(self, context, area, region_type):
+        '''
+        note, unfortunately my attempts to invoke screen.area_move() failed due to wrong context, even with various overrides
+        so positioning the mouse on the area border is all I can do for now
+        '''
+        
+        if area and region_type in ['ASSET_BOTTOM', 'ASSET_TOP']:
+            mouse = get_window_space_co2d(context, self.mouse_pos)
+            if region_type == 'ASSET_BOTTOM':
+                mouse.y = area.y + area.height
+
+            else:
+                mouse.y = area.y
+
+            warp_mouse(self, context, mouse, region=False)
 
 
 class AreaDumper(bpy.types.Operator):
