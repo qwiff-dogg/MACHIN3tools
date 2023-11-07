@@ -755,7 +755,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
 
         # TOOGLE REGION
 
-        if getattr(bpy.types, "MACHIN3_OT_toggle_region", False):
+        if getattr(bpy.types, "MACHIN3_OT_toggle_view3d_region", False):
             bb = b.box()
             bb.prop(self, 'region_show', text="Toggle Region", icon='TRIA_DOWN' if self.region_show else 'TRIA_RIGHT', emboss=False)
 

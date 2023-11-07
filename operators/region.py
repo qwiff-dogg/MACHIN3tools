@@ -1,4 +1,5 @@
 import bpy
+from bpy.types import CompositorNodeAntiAliasing
 from bpy.utils import time_from_frame
 from .. utils.ui import get_mouse_pos, warp_mouse, get_window_space_co2d
 from .. utils.system import printd
@@ -8,9 +9,11 @@ from .. utils.asset import get_asset_import_method, get_asset_library_reference,
 from .. colors import red, yellow
 
 
-class ToggleRegion(bpy.types.Operator):
-    bl_idname = "machin3.toggle_region"
-    bl_label = "MACHIN3: Toggle Region"
+supress_assetbrowser_toggle = False
+
+class ToggleVIEW3DRegion(bpy.types.Operator):
+    bl_idname = "machin3.toggle_view3d_region"
+    bl_label = "MACHIN3: Toggle 3D View Region"
     bl_description = "Toggle 3D View Region based on Mouse Position"
     bl_options = {'INTERNAL'}
 
@@ -37,7 +40,7 @@ class ToggleRegion(bpy.types.Operator):
         region_type = self.get_region_type_from_mouse(context, debug=False)
 
         # then toggle it
-        area = self.toggle_region(context, areas, regions, region_type=region_type, debug=True)
+        area = self.toggle_region(context, areas, regions, region_type, debug=False)
 
         # warp the mouse to the region border, so it can be adjusted right away if the user choses so
         if get_prefs().region_warp_mouse_to_asset_border:
@@ -58,12 +61,13 @@ class ToggleRegion(bpy.types.Operator):
 
         if not context.scene.M3.get('asset_browser_prefs', False):
             context.scene.M3['asset_browser_prefs'] = {}
+            print("initiating asset browser prefs on scene object")
 
         self.prefs = context.scene.M3.get('asset_browser_prefs')
 
         # ensure the curretn screen is in the asset browser presf
         if context.screen.name not in self.prefs:
-            # print("initiating asset browser prefs for screen", screen_name)
+            print("initiating asset browser prefs for screen", context.screen.name)
 
             empty = {'area_height': 250,
                      'libref': 'ALL',
@@ -71,7 +75,7 @@ class ToggleRegion(bpy.types.Operator):
                      'import_method': 'FOLLOW_PREFS',
                      'header_align': 'TOP',
                      'show_region_toolbar': True,
-                     'show_region_ui': False}
+                     'show_region_tool_props': False}
 
             self.prefs[context.screen.name] = {'ASSET_TOP': empty,
                                                'ASSET_BOTTOM': empty.copy()}
@@ -157,7 +161,7 @@ class ToggleRegion(bpy.types.Operator):
         '''
 
         close_range = 25
-        prefer_left_right = True  # TODO: addon prefs
+        prefer_left_right = True  # TODO: addon prefs?
 
         if context.region.type == 'WINDOW':
             area = context.area
@@ -288,13 +292,15 @@ class ToggleRegion(bpy.types.Operator):
             else:
 
                 if is_fullscreen(context.screen):
-
                     coords = (context.region.width / 2, 100 * scale if region_type == 'ASSET_BOTTOM' else context.region.height - 100 * scale)
                     bpy.ops.machin3.draw_label(text="You can't Split this area in Fullscreen", coords=coords, color=red, alpha=1, time=2)
 
-
                 else:
                     return self.toggle_area(context, areas, region_type, screen_name, scale)
+
+        # TODO?
+        # show_region_header True
+        # show_region_tool_header True
 
     def toggle_area(self, context, areas, region_type, screen_name, scale):
         '''
@@ -314,23 +320,7 @@ class ToggleRegion(bpy.types.Operator):
         close_area = areas['BOTTOM' if is_bottom else 'TOP']
 
         if close_area and self.is_close_area_of_type(close_area, 'ASSET_BROWSER'):
-            for space in close_area.spaces:
-                if space.type == 'FILE_BROWSER':
-                    if space.params:
-                        libref = get_asset_library_reference(space.params)
-                        import_method = get_asset_import_method(space.params)
-
-                        self.prefs[screen_name][region_type]['area_height'] = close_area.height
-                        self.prefs[screen_name][region_type]['libref'] = libref
-                        self.prefs[screen_name][region_type]['import_method'] = import_method
-                        self.prefs[screen_name][region_type]['catalog_id'] = space.params.catalog_id
-                        self.prefs[screen_name][region_type]['show_region_toolbar'] = space.show_region_toolbar
-                        self.prefs[screen_name][region_type]['show_region_ui'] = space.show_region_ui
-
-            for region in close_area.regions:
-                if region.type == 'HEADER':
-                    self.prefs[screen_name][region_type]['header_align'] = region.alignment
-
+            self.store_asset_browser_area_settings(context, close_area, region_type, screen_name)
 
             with context.temp_override(area=close_area):
                 bpy.ops.screen.area_close()
@@ -339,6 +329,12 @@ class ToggleRegion(bpy.types.Operator):
         # OPEN NEW AREA at BOTTOM or TOP
 
         else:
+
+            # NOTE: supress automatic invokation of ToggleASSETBROWSERRegion()
+            # ####: for some reason this happens due to the split op I think, but not sure actually
+
+            global supress_assetbrowser_toggle
+            supress_assetbrowser_toggle = True
 
             # calculate asset split factor, from stored height in pixels
             area = areas['ACTIVE']
@@ -371,7 +367,7 @@ class ToggleRegion(bpy.types.Operator):
                                 import_method = self.prefs[screen_name][region_type]['import_method']
                                 catalog_id = self.prefs[screen_name][region_type]['catalog_id']
                                 show_region_toolbar = self.prefs[screen_name][region_type]['show_region_toolbar']
-                                show_region_ui = self.prefs[screen_name][region_type]['show_region_ui']
+                                show_region_tool_props = self.prefs[screen_name][region_type]['show_region_tool_props']
 
                                 set_asset_library_reference(new_space.params, libref)
                                 set_asset_import_method(new_space.params, import_method)
@@ -379,10 +375,14 @@ class ToggleRegion(bpy.types.Operator):
                                 new_space.params.catalog_id = catalog_id
 
                                 # NOTE: some very odd behavior here, show_region_toolbar needs to be negated to maintain whatever was set, but even that may not always work
-                                new_space.show_region_toolbar = not show_region_toolbar
+                                # new_space.show_region_toolbar = not show_region_toolbar
+                                # NOTE: I think it was due to the T key still being passed through, so the normal toggle took over!
+                                # ####: it's no longer happening now, that the ToggleASSETBROWSERRegion() takes over in that region
+                                new_space.show_region_toolbar = show_region_toolbar
 
-                                # NOTE: this one doesn't work at all, will always be closed, no matter what I set
-                                new_space.show_region_ui = show_region_ui
+                                # set the 'N panel' too, which in the FILE_BROWSER is called show_region_tool_props, not show_region_UI like in the 3d view!
+                                new_space.show_region_tool_props = show_region_tool_props
+
 
                             # flip HEADER region if necessary
                             for region in new_area.regions:
@@ -406,15 +406,12 @@ class ToggleRegion(bpy.types.Operator):
 
                 return new_area
 
-
-        # TODO?
-        # show_region_header True
-        # show_region_tool_header True
-
     def is_close_area_of_type(self, area, area_type='ASSET_BROWSER'):  
         '''
         compare passed in area with area_type arg
         note, that for ASSET_BROWSER you hace to check the ui_type to, as it's still just a FILE_BROWSER as of Blender 4
+
+        we do this check to eunsure we only close an area that would would open too, so we don't want to close a time line for instance, until we support opening timelines
         '''
 
         if area_type == 'ASSET_BROWSER':
@@ -422,6 +419,28 @@ class ToggleRegion(bpy.types.Operator):
 
         else:
             return area.type == area_type
+
+    def store_asset_browser_area_settings(self, context, area, region_type, screen_name):
+        '''
+        store the passed in area settings on the scene
+        '''
+
+        for space in area.spaces:
+            if space.type == 'FILE_BROWSER':
+                if space.params:
+                    libref = get_asset_library_reference(space.params)
+                    import_method = get_asset_import_method(space.params)
+
+                    context.scene.M3['asset_browser_prefs'][screen_name][region_type]['area_height'] = area.height
+                    context.scene.M3['asset_browser_prefs'][screen_name][region_type]['libref'] = libref
+                    context.scene.M3['asset_browser_prefs'][screen_name][region_type]['import_method'] = import_method
+                    context.scene.M3['asset_browser_prefs'][screen_name][region_type]['catalog_id'] = space.params.catalog_id
+                    context.scene.M3['asset_browser_prefs'][screen_name][region_type]['show_region_toolbar'] = space.show_region_toolbar
+                    context.scene.M3['asset_browser_prefs'][screen_name][region_type]['show_region_tool_props'] = space.show_region_tool_props
+
+        for region in area.regions:
+            if region.type == 'HEADER':
+                context.scene.M3['asset_browser_prefs'][screen_name][region_type]['header_align'] = region.alignment
 
     def warp_mouse_to_border(self, context, area, region_type):
         '''
@@ -438,6 +457,143 @@ class ToggleRegion(bpy.types.Operator):
                 mouse.y = area.y
 
             warp_mouse(self, context, mouse, region=False)
+
+
+class ToggleASSETBROWSERRegion(bpy.types.Operator):
+    bl_idname = "machin3.toggle_asset_browser_region"
+    bl_label = "MACHIN3: Toggle Asset Browser Region"
+    bl_description = "Toggle Asset Browser Region based on Mouse Position"
+    bl_options = {'INTERNAL'}
+
+    @classmethod
+    def poll(cls, context):
+        if context.area:
+            return context.area.type == 'FILE_BROWSER' and context.area.ui_type == 'ASSETS'
+
+    def invoke(self, context, event):
+        global supress_assetbrowser_toggle
+
+        if supress_assetbrowser_toggle:
+            supress_assetbrowser_toggle = False
+            print("supressing")
+
+            return {'CANCELLED'}
+
+        # init asset_browser_prefs dict
+        ToggleVIEW3DRegion.initiate_asset_browser_prefs(self, context, debug=False)
+
+        # find_areas directly above or below the active area
+        areas = ToggleVIEW3DRegion.get_areas(self, context, debug=False)
+
+        # find out of there is a 3d view above or below the asset browser
+        self.view3d_above =  areas['TOP'] if areas['TOP'] and areas['TOP'].type == 'VIEW_3D' else None
+        self.view3d_below =  areas['BOTTOM'] if areas['BOTTOM'] and areas['BOTTOM'].type == 'VIEW_3D' else None
+
+        # if there is a 3dview above or below, then you can in fact close the curretn asset browsr
+        can_close = bool(self.view3d_above or self.view3d_below)
+        # print("can close:", can_close)
+
+        # get mouse pos
+        get_mouse_pos(self, context, event, hud=False)
+
+        # get the region type to toggle
+        region_type = self.get_region_type_from_mouse(context, can_close, debug=False)
+
+        # then toggle it
+        self.toggle_region(context, areas, region_type, debug=False)
+
+        # context.area.tag_redraw()
+        return {'FINISHED'}
+
+    def get_region_type_from_mouse(self, context, can_close, debug=False):
+        '''
+        from the mouse position, get the type of the region you want to toggle
+        unless it's over a non-WINDOW region already, then just toggle this one
+        '''
+
+        close_range = 30 if can_close else 50
+
+        if context.region.type in ['WINDOW', 'HEADER']:
+            area = context.area
+            region_width = 0
+
+            # in the asset browser, the TOOOLS region will the mouse to the right, but the area.width stays unaffected
+            for region in area.regions:
+                if region.type == 'TOOLS':
+                    break
+
+            # get mouse position expresed in percentages, and consider the TOOLS header width too, which pushes the mouse to the right, while keeping the area width unaffected
+            # x_pct = (self.mouse_pos.x / area.width) * 100
+            x_pct = ((self.mouse_pos.x + region.width)/ area.width) * 100
+
+            if x_pct <= close_range:
+                side = 'LEFT'
+
+            elif x_pct >= 100 - close_range:
+                side = 'RIGHT'
+
+            else:
+                side = 'CENTER'
+
+            if debug:
+                print()
+                print("area width:", area.width)
+                print("tools region width:", region_width)
+                # print("mouse pos:", self.mouse_pos.x)
+                print("mouse pos, corrected:", self.mouse_pos.x + region_width)
+
+                print()
+                print("mouse.x in %", x_pct)
+
+                print()
+                print(f"side: {side}")
+
+            if side == 'LEFT':
+                return 'TOOLS'
+
+            elif side == 'RIGHT':
+                return 'TOOL_PROPS'
+
+            elif side == 'CENTER':
+                return 'CLOSE'
+
+        else:
+            return context.region.type
+
+    def toggle_region(self, context, areas, region_type='TOOLS', debug=False):
+        '''
+        toggle region based on type arg
+        '''
+
+        # if debug:
+        #     print()
+        #     print("toggling:", region_type)
+
+
+        # CLOSE ASSET BROWSER
+
+        if region_type == 'CLOSE':
+
+            # store the props before closing
+            area = areas['ACTIVE']
+            region_type = 'ASSET_BOTTOM' if self.view3d_above else 'ASSET_TOP'
+            screen_name = context.screen.name
+
+            ToggleVIEW3DRegion.store_asset_browser_area_settings(self, context, area, region_type, screen_name)
+
+            # then close
+            bpy.ops.screen.area_close()
+
+
+        # TOGGLE TOOLS (library and catalog slection) or ACTIVE ASSET info panel
+        else:
+            space = context.space_data
+
+            if region_type == 'TOOLS':
+                space.show_region_toolbar = not space.show_region_toolbar
+
+            elif region_type == 'TOOL_PROPS':
+                space.show_region_tool_props = not space.show_region_tool_props
 
 
 class AreaDumper(bpy.types.Operator):
@@ -458,18 +614,27 @@ class AreaDumper(bpy.types.Operator):
         #
         # bpy.ops.screen.area_move('INVOKE_DEFAULT')
 
-        del context.scene.M3['asset_browser_prefs']
+        # del context.scene.M3['asset_browser_prefs']
+
+
+        area = context.area
+        #
+        # for space in area.spaces:
+        #     if space.type == area.type:
+        #         for d in dir(space):
+        #             print("", d, getattr(space, d))
+
+
+        print("context.region.type:", context.region.type)
+
+
+
+
+
 
         return {'FINISHED'}
 
 
-        space = get_assetbrowser_space(context.area)
-
-        # if space and space.params:
-        #     for d in dir(space.params):
-        #         print("", d, getattr(space.params, d))
-
-        area = context.area
 
         print()
         print("area")
