@@ -160,10 +160,10 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
         unless it's over a non-WINDOW region already, then just toggle this one
         '''
 
-        close_range = 25
-        prefer_left_right = True  # TODO: addon prefs?
+        prefer_left_right = get_prefs().region_prefer_left_right
+        close_range = get_prefs().region_close_range
 
-        if context.region.type == 'WINDOW':
+        if context.region.type in ['WINDOW', 'HEADER', 'TOOL_HEADER']:
             area = context.area
 
             # get mouse position expresed in percentages
@@ -511,7 +511,7 @@ class ToggleASSETBROWSERRegion(bpy.types.Operator):
         unless it's over a non-WINDOW region already, then just toggle this one
         '''
 
-        close_range = 30 if can_close else 50
+        close_range = get_prefs().region_close_range if can_close else 50
 
         if context.region.type in ['WINDOW', 'HEADER']:
             area = context.area
