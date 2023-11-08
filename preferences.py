@@ -273,6 +273,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     region_toggle_assetshelf: BoolProperty(name="Toggle the Asset Shelf, instead of the Browser", default=False)
     region_toggle_assetbrowser_top: BoolProperty(name="Toggle the Asset Browser at the Top", default=True)
     region_toggle_assetbrowser_bottom: BoolProperty(name="Toggle the Asset Browser at the Bottom", default=True)
+
     region_warp_mouse_to_asset_border: BoolProperty(name="Warp Mouse to Asset Browser Border", default=False)
 
 
@@ -765,7 +766,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
             if self.region_show:
                 column = bb.column(align=True)
 
-                draw_split_row(self, column, prop='region_prefer_left_right', label='Prefer Left/Right toggle, over Bottom/Top, before Close Range is used to determine that Bottom/Top is toggled')
+                draw_split_row(self, column, prop='region_prefer_left_right', label='Prefer Left/Right toggle, over Bottom/Top, before Close Range is used to determine whether the other pair is toggled')
                 draw_split_row(self, column, prop='region_close_range', label='Close Range - Proximity to Boundary as Percetange of the Area Width/Height')
 
                 if bpy.app.version >= (4, 0, 0):

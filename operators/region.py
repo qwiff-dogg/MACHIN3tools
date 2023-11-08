@@ -459,6 +459,9 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
 
         # get settingsbpy.ops.screen.back_to_previous()
         toggle_asset_shelf = get_prefs().region_toggle_assetshelf
+        toggle_asset_top = get_prefs().region_toggle_assetbrowser_top
+        toggle_asset_bottom = get_prefs().region_toggle_assetbrowser_bottom
+
         scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
 
 
@@ -521,7 +524,8 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
                 bpy.ops.machin3.draw_label(text="You can't Split this area in Fullscreen", coords=coords, color=red, alpha=1, time=2)
 
             else:
-                return self.toggle_area(context, areas, region_type, screen_name, scale)
+                if region_type == 'ASSET_BOTTOM' and  toggle_asset_bottom or region_type == 'ASSET_TOP' and toggle_asset_top:
+                    return self.toggle_area(context, areas, region_type, screen_name, scale)
 
         # TODO?
         # show_region_header True
