@@ -382,6 +382,15 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
                                 catalog_id = self.prefs[screen_name][region_type]['catalog_id']
                                 display_size = self.prefs[screen_name][region_type]['display_size']
 
+                                # reset display size to a default value when encounterign wrong type, such as when openeing 3.6 file in 4.0 or the other way around
+                                if bpy.app.version >= (4, 0, 0) and isinstance(display_size, str):
+                                    print("WARNING: discovered legacy string value of asset browser display_size prop, resetting to size 96")
+                                    display_size = 96
+
+                                elif bpy.app.version < (4, 0, 0) and isinstance(display_size, int):
+                                    print("WARNING: discovered new string value of asset browser display_size prop, in legacy Blender version, resetting to size SMALL")
+                                    display_size = 'SMALL'
+
                                 show_region_toolbar = self.prefs[screen_name][region_type]['show_region_toolbar']
                                 show_region_tool_props = self.prefs[screen_name][region_type]['show_region_tool_props']
 
@@ -751,54 +760,8 @@ class AreaDumper(bpy.types.Operator):
         # print(context.area.type)
         # print(context.space_data.type)
         # print(context.region.type)
-        #
-        # bpy.ops.screen.area_move('INVOKE_DEFAULT')
 
-        # del context.scene.M3['asset_browser_prefs']
-
-
-
-        area = context.area
-
-        for space in area.spaces:
-            if space.type == area.type:
-                # for d in dir(space):
-                #     print("", d, getattr(space, d))
-
-                if space.params:
-                    print(space.params)
-
-                    # for d in dir(space.params):
-                    #     print(d, getattr(space.params, d))
-
-
-                    # space.params.display_size = 120
-
-                    # space.params.filter_search = 'hello'
-
-                    filter_id = space.params.filter_asset_id
-
-                    print(filter_id.filter_action)
-                    print(filter_id.filter_group)
-                    print(filter_id.filter_material)
-                    print(filter_id.filter_node_tree)
-                    print(filter_id.filter_object)
-                    print(filter_id.filter_world)
-
-                    filter_id.filter_material = False
-
-                    # filter_asset_id = space.params.filter_asset_id
-                    #
-                    # for d in dir(filter_asset_id):
-                    #     print(d, getattr(filter_asset_id, d))
-
-
-
-
-
-
-
-
+        print(context.screen.name)
 
 
 
