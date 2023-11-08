@@ -328,7 +328,7 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
             if region.type == 'HEADER':
                 context.scene.M3['asset_browser_prefs'][screen_name][region_type]['header_align'] = region.alignment
 
-    def get_area_split_factor(self, context, total_height, asset_browser_height, is_bottom, debug=False):
+    def get_area_split_factor(self, context, total_height, stored_asset_browser_height, is_bottom, debug=False):
         '''
         calculate asset split factor, from stored height in pixels divided by the total height of the current pre-split area
         NOTE, depending of the percentage and depending on the general UI scale it needs to be compensated by a few pixels
@@ -338,7 +338,7 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
         if debug:
             print()
             print("total height:", total_height)
-            print("percentage:", asset_browser_height / total_height)
+            print("  percentage:", stored_asset_browser_height / total_height)
 
         if is_bottom:
             if debug:
@@ -347,22 +347,21 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
             if context.preferences.system.ui_scale >= 2:
                 if debug:
                     print(" big ui scale")
-                    print("  ", asset_browser_height / total_height)
 
-                if asset_browser_height / total_height <= 0.12:
-                    area_split_factor = (asset_browser_height + 3) / total_height
+                if stored_asset_browser_height / total_height <= 0.12:
+                    area_height = stored_asset_browser_height + 3
 
                     if debug:
                         print("  smaller than 37.5%, compensating with", 3, "pixels")
 
-                elif asset_browser_height / total_height <= 0.375:
-                    area_split_factor = (asset_browser_height + 2) / total_height
+                elif stored_asset_browser_height / total_height <= 0.375:
+                    area_height = stored_asset_browser_height + 2
 
                     if debug:
                         print("  smaller than 37.5%, compensating with", 2, "pixels")
 
                 else:
-                    area_split_factor = min(0.45, (asset_browser_height + 1)/ total_height)
+                    area_height = stored_asset_browser_height + 1
 
                     if debug:
                         print("  bigger than 37.5% compensating with", 1, "pixels, capped at 45%")
@@ -371,14 +370,14 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
                 if debug:
                     print(" normal ui scale")
 
-                if asset_browser_height / total_height <= 0.25:
-                    area_split_factor = (asset_browser_height + 1) / total_height
+                if stored_asset_browser_height / total_height <= 0.25:
+                    area_height = stored_asset_browser_height + 1
 
                     if debug:
                         print("  smaller than 25%, compensating with", 1, "pixels")
 
                 else:
-                    area_split_factor = min(0.45, asset_browser_height / total_height)
+                    area_height = stored_asset_browser_height
 
                     if debug:
                         print("  using original height, capped at 45%")
@@ -388,20 +387,20 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
                 if debug:
                     print(" big ui scale")
 
-                if asset_browser_height / total_height <= 0.12:
-                    area_split_factor = (asset_browser_height + 4) / total_height
+                if stored_asset_browser_height / total_height <= 0.12:
+                    area_height = stored_asset_browser_height + 4
 
                     if debug:
                         print("  smaller than 12%, compensating with", 4, "pixels")
 
-                elif asset_browser_height / total_height <= 0.375:
-                    area_split_factor = (asset_browser_height + 3) / total_height
+                elif stored_asset_browser_height / total_height <= 0.375:
+                    area_height = stored_asset_browser_height + 3
 
                     if debug:
                         print("  smaller than 37.5%, compensating with", 3, "pixels")
 
                 else:
-                    area_split_factor = min(0.45, (asset_browser_height + 2)/ total_height)
+                    area_height = stored_asset_browser_height + 2
 
                     if debug:
                         print("  bigger than 37.5% compensating with", 2, "pixels, capped at 45%")
@@ -410,19 +409,21 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
                 if debug:
                     print(" normal ui scale")
 
-                if asset_browser_height / total_height <= 0.25:
-                    area_split_factor = (asset_browser_height + 2) / total_height
+                if stored_asset_browser_height / total_height <= 0.25:
+                    area_height = stored_asset_browser_height + 2
 
                     if debug:
                         print("  smaller than 25%, compensating with", 2, "pixels")
 
                 else:
-                    area_split_factor = min(0.45, (asset_browser_height + 1)/ total_height)
+                    area_height = stored_asset_browser_height + 1
 
                     if debug:
                         print("  bigger than 25% compensating with", 1, "pixels, capped at 45%")
 
-        return area_split_factor
+        area_split_factor = min(0.45, area_height / total_height)
+
+        return area_split_factor, area_height 
 
     def warp_mouse_to_border(self, context, area, region_type):
         '''
@@ -559,14 +560,24 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
 
         else:
 
-            # NOTE: supress automatic invokation of ToggleASSETBROWSERRegion()
-            # ####: for some reason this happens due to the split op I think, but not sure actually
-
-            global supress_assetbrowser_toggle
-            supress_assetbrowser_toggle = True
+            total_height = areas['ACTIVE'].height
+            area_height = self.prefs[screen_name][region_type]['area_height']
 
             # calculate the area split factor
-            area_split_factor = self.get_area_split_factor(context, areas['ACTIVE'].height, self.prefs[screen_name][region_type]['area_height'], is_bottom)
+            area_split_factor, _ = self.get_area_split_factor(context, total_height, area_height, is_bottom)
+
+            # NOTE: supress automatic invokation of ToggleASSETBROWSERRegion()
+            # ####: for some reason this happens due to the split op I think, but not sure actually
+            # ####: and we only do this if the mouse will end up in the new area, as otherwise you will have a dead keypress when you enter the new area and try to toggle something
+            global supress_assetbrowser_toggle
+
+            if is_bottom:
+                if self.mouse_pos.y <= area_height:
+                    supress_assetbrowser_toggle = True
+
+            else:
+                if self.mouse_pos.y >= total_height - area_height:
+                    supress_assetbrowser_toggle = True
 
             # fetch all currently existing areas
             all_areas = [area for area in context.screen.areas]
@@ -590,7 +601,6 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
 
                         if new_space.params:
                             if screen_name in self.prefs:
-
 
                                 # fetch them
                                 libref = self.prefs[screen_name][region_type]['libref']
@@ -721,18 +731,26 @@ class ToggleASSETBROWSERRegion(bpy.types.Operator):
 
         close_range = get_prefs().region_close_range if can_close else 50
 
+        # print()
+        # print(context.region.type)
+        # print(self.mouse_pos)
+
         if context.region.type in ['WINDOW', 'HEADER']:
             area = context.area
             region_width = 0
 
-            # in the asset browser, the TOOOLS region will the mouse to the right, but the area.width stays unaffected
+            # in the asset browser, the TOOLS region will the mouse to the right, but the area.width stays unaffected
+            # bui only for when in th WINDOW region, not when over the HEADER!
             for region in area.regions:
                 if region.type == 'TOOLS':
+                    if context.region.type == 'WINDOW':
+                        region_width = region.width
+
                     break
 
             # get mouse position expresed in percentages, and consider the TOOLS header width too, which pushes the mouse to the right, while keeping the area width unaffected
             # x_pct = (self.mouse_pos.x / area.width) * 100
-            x_pct = ((self.mouse_pos.x + region.width)/ area.width) * 100
+            x_pct = ((self.mouse_pos.x + region_width)/ area.width) * 100
 
             if x_pct <= close_range:
                 side = 'LEFT'
