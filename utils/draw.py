@@ -700,18 +700,30 @@ def draw_screen_cast_HUD(context):
 
     font = 0
     scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
-    gap_y = 5 * scale
 
     # initiate the horizontal offset based on the presence of the tools bar
     tools = [r for r in context.area.regions if r.type == 'TOOLS']
     offset_x = tools[0].width if tools else 0
 
     # then add some more depending on wether the addon prefix is used
-    offset_x += 7 if p.screencast_show_addon else 15
+    offset_x += (7 if p.screencast_show_addon else 15) * scale
 
     # initiate the vertical offset based on the height of the redo panel, use a 50px base offset
-    redo = [r for r in context.area.regions if r.type == 'HUD']
-    offset_y = redo[0].y + redo[0].height + gap_y if redo else gap_y
+    redo = [r for r in context.area.regions if r.type == 'HUD' and r.y]
+    bottom_header = [r for r in context.area.regions if r.type == 'HEADER' and r.alignment == 'BOTTOM']
+    bottom_tool_header = [r for r in context.area.regions if r.type == 'TOOL_HEADER' and r.alignment == 'BOTTOM']
+
+    offset_y = 20 * scale
+
+    if redo:
+        offset_y += redo[0].height
+
+    if bottom_header:
+        offset_y += bottom_header[0].height
+
+    if bottom_tool_header:
+        offset_y += bottom_tool_header[0].height
+
 
     # emphasize the last op
     emphasize = 1.25
