@@ -432,15 +432,15 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
                         # NOTE: space.params can be None, so we can't set Library, or any other of the spaces settings
                         # ####: however, if you manually turn the 3d view into an asset browser and back into a 3d view again, then params will be available
                         else:
-                            coords = (context.region.width / 2, 100 * scale if region_type == 'ASSET_BOTTOM' else context.region.height - (80 * scale + context.region.height * asset_split_factor))
+                            coords = (context.region.width / 2, 100 * scale if region_type == 'ASSET_BOTTOM' else context.region.height - (80 * scale + context.region.height * area_split_factor))
 
-                            bpy.ops.machin3.draw_label(text="WARNING: Assetbrowser couldn't be set up yet", coords=coords, color=red, alpha=1, time=3)
+                            bpy.ops.machin3.draw_label(text="WARNING: Assetbrowser couldn't be set up yet, due to Blender shenanigans", coords=coords, color=red, alpha=1, time=3)
 
-                            coords = (context.region.width / 2, 80 * scale if region_type == 'ASSET_BOTTOM' else context.region.height - (100 * scale + context.region.height * asset_split_factor))
-                            bpy.ops.machin3.draw_label(text="TO FIX IT, DO THIS: Change the 3D View into an Asset browser, and back again", coords=coords, color=yellow, alpha=1, time=4)
+                            coords = (context.region.width / 2, 80 * scale if region_type == 'ASSET_BOTTOM' else context.region.height - (100 * scale + context.region.height * area_split_factor))
+                            bpy.ops.machin3.draw_label(text="TO FIX IT, DO THIS: Change THIS 3D View into an Asset browser, and back again", coords=coords, color=yellow, alpha=1, time=4)
 
-                            coords = (context.region.width / 2, 60 * scale if region_type == 'ASSET_BOTTOM' else context.region.height - (120 * scale + context.region.height * asset_split_factor))
-                            bpy.ops.machin3.draw_label(text="Then save the blend file", coords=coords, color=yellow, alpha=1, time=5)
+                            coords = (context.region.width / 2, 60 * scale if region_type == 'ASSET_BOTTOM' else context.region.height - (120 * scale + context.region.height * area_split_factor))
+                            bpy.ops.machin3.draw_label(text="Then save the blend file, for the change to stick", coords=coords, color=yellow, alpha=1, time=5)
 
                 return new_area
 
