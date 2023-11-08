@@ -768,16 +768,18 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                 draw_split_row(self, column, prop='region_prefer_left_right', label='Prefer Left/Right toggle, over Bottom/Top, before Close Range is used to determine that Bottom/Top is toggled')
                 draw_split_row(self, column, prop='region_close_range', label='Close Range - Proximity to Boundary as Percetange of the Area Width/Height')
 
+                if bpy.app.version >= (4, 0, 0):
+                    column.separator()
+
+                    draw_split_row(self, column, prop='region_toggle_assetshelf', label='If available toggle the Asset Shelf instead of the Browser', info='This is still extremely limited in Blender 4.0, and practically unusable')
+
                 column.separator()
 
-                draw_split_row(self, column, prop='region_toggle_assetshelf', label='Toggle Asset Shelf instead of the Browser', info='This still extremely limited in Blender 4.0, and practically unusable')
+                draw_split_row(self, column, prop='region_toggle_assetbrowser_top', label='Toggle Asset Browser at Top of 3D View')
+                draw_split_row(self, column, prop='region_toggle_assetbrowser_bottom', label='Toggle Asset Browser at Bottom of 3D View')
 
-                if not self.region_toggle_assetshelf:
-                    draw_split_row(self, column, prop='region_toggle_assetbrowser_top', label='Toggle Asset Browser at Top of 3D View')
-                    draw_split_row(self, column, prop='region_toggle_assetbrowser_bottom', label='Toggle Asset Browser at Bottom of 3D View')
-
-                    if any([self.region_toggle_assetbrowser_top, self.region_toggle_assetbrowser_bottom]):
-                        draw_split_row(self, column, prop='region_warp_mouse_to_asset_border', label='Warp Mouse to Assetbrowser Border')
+                if any([self.region_toggle_assetbrowser_top, self.region_toggle_assetbrowser_bottom]):
+                    draw_split_row(self, column, prop='region_warp_mouse_to_asset_border', label='Warp Mouse to Assetbrowser Border')
 
 
         # RENDER
