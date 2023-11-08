@@ -349,32 +349,19 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
             global supress_assetbrowser_toggle
             supress_assetbrowser_toggle = True
 
-            # calculate asset split factor, from stored height in pixels
-            area = areas['ACTIVE']
-            asset_height = self.prefs[screen_name][region_type]['area_height']
+            # calculate the area split factor
+            area_split_factor = self.get_area_split_factor(context, areas['ACTIVE'].height, self.prefs[screen_name][region_type]['area_height'], is_bottom)
 
-            # consider the border with between the 3 regions, it's 3px wide, and 7 when the ui is scaled to 2
-            # if you don't take this into account then the new area will slowly change in size with repeated opens and closes
-            # NOTE: even the though the actual border widths are 7 and 3, for the bottom split we need to use the values of 5 and 2 for some reason
-            if is_bottom:
-                border_width = 5 if context.preferences.system.ui_scale >= 2 else 2
-            else:
-                border_width = 7 if context.preferences.system.ui_scale >= 2 else 3
-
-            # the asset split factor should be at most something less than half the height
-            # anything else will mess up the split, and put the 3d view in the new area
-            area_split_factor = min(0.45, (asset_height + (border_width / 2)) / area.height)
-
-            # fetch all exsiting areas
+            # fetch all currently existing areas
             all_areas = [area for area in context.screen.areas]
 
             # do the split
             bpy.ops.screen.area_split(direction='HORIZONTAL', factor=area_split_factor if is_bottom else 1 - area_split_factor)
 
-            # find the new area
+            # find the new area by comparison
             new_areas = [area for area in context.screen.areas if area not in all_areas]
 
-            # and make it an asset browser
+            # and turn it into an asset browser
             if new_areas:
                 new_area = new_areas[0]
                 new_area.type = 'FILE_BROWSER'
@@ -499,6 +486,102 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
             if region.type == 'HEADER':
                 context.scene.M3['asset_browser_prefs'][screen_name][region_type]['header_align'] = region.alignment
 
+    def get_area_split_factor(self, context, total_height, asset_browser_height, is_bottom, debug=False):
+        '''
+        calculate asset split factor, from stored height in pixels divided by the total height of the current pre-split area
+        NOTE, depending of the percentage and depending on the general UI scale it needs to be compensated by a few pixels
+        also it needs to be capped at less than 50%, I chose 45%, or the new region will be current one
+        '''
+
+        if debug:
+            print()
+            print("total height:", total_height)
+            print("percentage:", asset_browser_height / total_height)
+
+        if is_bottom:
+            if debug:
+                print("bottom split")
+
+            if context.preferences.system.ui_scale >= 2:
+                if debug:
+                    print(" big ui scale")
+                    print("  ", asset_browser_height / total_height)
+
+                if asset_browser_height / total_height <= 0.12:
+                    area_split_factor = (asset_browser_height + 3) / total_height
+
+                    if debug:
+                        print("  smaller than 37.5%, compensating with", 3, "pixels")
+
+                elif asset_browser_height / total_height <= 0.375:
+                    area_split_factor = (asset_browser_height + 2) / total_height
+
+                    if debug:
+                        print("  smaller than 37.5%, compensating with", 2, "pixels")
+
+                else:
+                    area_split_factor = min(0.45, (asset_browser_height + 1)/ total_height)
+
+                    if debug:
+                        print("  bigger than 37.5% compensating with", 1, "pixels, capped at 45%")
+
+            else:
+                if debug:
+                    print(" normal ui scale")
+
+                if asset_browser_height / total_height <= 0.25:
+                    area_split_factor = (asset_browser_height + 1) / total_height
+
+                    if debug:
+                        print("  smaller than 25%, compensating with", 1, "pixels")
+
+                else:
+                    area_split_factor = min(0.45, asset_browser_height / total_height)
+
+                    if debug:
+                        print("  using original height, capped at 45%")
+
+        else:
+            if context.preferences.system.ui_scale >= 2:
+                if debug:
+                    print(" big ui scale")
+
+                if asset_browser_height / total_height <= 0.12:
+                    area_split_factor = (asset_browser_height + 4) / total_height
+
+                    if debug:
+                        print("  smaller than 12%, compensating with", 4, "pixels")
+
+                elif asset_browser_height / total_height <= 0.375:
+                    area_split_factor = (asset_browser_height + 3) / total_height
+
+                    if debug:
+                        print("  smaller than 37.5%, compensating with", 3, "pixels")
+
+                else:
+                    area_split_factor = min(0.45, (asset_browser_height + 2)/ total_height)
+
+                    if debug:
+                        print("  bigger than 37.5% compensating with", 2, "pixels, capped at 45%")
+
+            else:
+                if debug:
+                    print(" normal ui scale")
+
+                if asset_browser_height / total_height <= 0.25:
+                    area_split_factor = (asset_browser_height + 2) / total_height
+
+                    if debug:
+                        print("  smaller than 25%, compensating with", 2, "pixels")
+
+                else:
+                    area_split_factor = min(0.45, (asset_browser_height + 1)/ total_height)
+
+                    if debug:
+                        print("  bigger than 25% compensating with", 1, "pixels, capped at 45%")
+
+        return area_split_factor
+
     def warp_mouse_to_border(self, context, area, region_type):
         '''
         note, unfortunately my attempts to invoke screen.area_move() failed due to wrong context, even with various overrides
@@ -532,7 +615,7 @@ class ToggleASSETBROWSERRegion(bpy.types.Operator):
 
         if supress_assetbrowser_toggle:
             supress_assetbrowser_toggle = False
-            print("supressing")
+            # print("supressing")
 
             return {'CANCELLED'}
 

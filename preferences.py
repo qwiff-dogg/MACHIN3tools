@@ -268,7 +268,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     region_show: BoolProperty(name="Show Region Preferences", default=False)
 
     region_prefer_left_right: BoolProperty(name="Prefer Left/Right over Bottom/Top", default=True)
-    region_close_range: FloatProperty(name="Close Range", subtype='PERCENTAGE', default=25, min=1, max=50)
+    region_close_range: FloatProperty(name="Close Range", subtype='PERCENTAGE', default=30, min=1, max=50)
 
     region_toggle_assetshelf: BoolProperty(name="Toggle the Asset Shelf, instead of the Browser", default=False)
     region_toggle_assetbrowser_top: BoolProperty(name="Toggle the Asset Browser at the Top", default=True)
