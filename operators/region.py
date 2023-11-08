@@ -355,7 +355,11 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
 
             # consider the border with between the 3 regions, it's 3px wide, and 7 when the ui is scaled to 2
             # if you don't take this into account then the new area will slowly change in size with repeated opens and closes
-            border_width = 7 if context.preferences.system.ui_scale >= 2 else 3
+            # NOTE: even the though the actual border widths are 7 and 3, for the bottom split we need to use the values of 5 and 2 for some reason
+            if is_bottom:
+                border_width = 5 if context.preferences.system.ui_scale >= 2 else 2
+            else:
+                border_width = 7 if context.preferences.system.ui_scale >= 2 else 3
 
             # the asset split factor should be at most something less than half the height
             # anything else will mess up the split, and put the 3d view in the new area
