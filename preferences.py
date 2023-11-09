@@ -343,6 +343,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     save_pie_show_plasticity_export: BoolProperty(name="Show Plasticity Export", default=True)
     save_pie_show_fbx_export: BoolProperty(name="Show .fbx Export", default=True)
     save_pie_show_usd_export: BoolProperty(name="Show .usd Export", default=True)
+    save_pie_show_stl_export: BoolProperty(name="Show .stl Export", default=False)
 
     fbx_export_apply_scale_all: BoolProperty(name="Use 'Fbx All' for Applying Scale", description="This is useful for Unity, but bad for Unreal Engine", default=False)
 
@@ -940,7 +941,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                 split = row.split(factor=0.5, align=True)
 
                 r = split.split(factor=0.42, align=True)
-                r.prop(self, "save_pie_show_obj_export", text="True" if self.save_pie_show_obj_export else "False", toggle=True)
+                r.prop(self, "save_pie_show_obj_export", text=str(self.save_pie_show_obj_export), toggle=True)
                 r.label(text="Show .obj Import/Export")
 
                 split.separator()
@@ -952,7 +953,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                 split = row.split(factor=0.5, align=True)
 
                 r = split.split(factor=0.42, align=True)
-                r.prop(self, "save_pie_show_plasticity_export", text="True" if self.save_pie_show_plasticity_export else "False", toggle=True)
+                r.prop(self, "save_pie_show_plasticity_export", text=str(self.save_pie_show_plasticity_export), toggle=True)
                 r.label(text="Show Plasticity Import/Export")
 
                 if self.save_pie_show_plasticity_export:
@@ -968,12 +969,12 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                 split = row.split(factor=0.5, align=True)
 
                 r = split.split(factor=0.42, align=True)
-                r.prop(self, "save_pie_show_fbx_export", text="True" if self.save_pie_show_fbx_export else "False", toggle=True)
+                r.prop(self, "save_pie_show_fbx_export", text=str(self.save_pie_show_fbx_export), toggle=True)
                 r.label(text="Show .fbx Import/Export")
 
                 if self.save_pie_show_fbx_export:
                     r = split.split(factor=0.42, align=True)
-                    r.prop(self, "fbx_export_apply_scale_all", text="True" if self.fbx_export_apply_scale_all else "False", toggle=True)
+                    r.prop(self, "fbx_export_apply_scale_all", text=str(self.fbx_export_apply_scale_all), toggle=True)
                     r.label(text="Use 'Fbx All' for Applying Scale")
 
                 else:
@@ -985,8 +986,20 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                 split = row.split(factor=0.5, align=True)
 
                 r = split.split(factor=0.42, align=True)
-                r.prop(self, "save_pie_show_usd_export", text="True" if self.save_pie_show_usd_export else "False", toggle=True)
+                r.prop(self, "save_pie_show_usd_export", text=str(self.save_pie_show_usd_export), toggle=True)
                 r.label(text="Show .usd Import/Export")
+
+                split.separator()
+
+
+                # STL
+
+                row = column.row(align=True)
+                split = row.split(factor=0.5, align=True)
+
+                r = split.split(factor=0.42, align=True)
+                r.prop(self, "save_pie_show_stl_export", text=str(self.save_pie_show_stl_export), toggle=True)
+                r.label(text="Show .stl Import/Export")
 
                 split.separator()
 
