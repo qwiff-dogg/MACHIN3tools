@@ -33,14 +33,14 @@ class SwitchShading(bpy.types.Operator):
             return f"Switch to {shading_type.capitalize()} shading, and restore previously set Overlay Visibility"
 
     def execute(self, context):
-
-        # initiate overlay settings on/from scene level
-        self.initiate_overlay_settings(context)
-
         scene = context.scene
 
-        overlay = context.space_data.overlay
         shading = context.space_data.shading
+        overlay = context.space_data.overlay
+
+        # initiate overlay settings on/from scene level
+        self.initiate_overlay_settings(context, shading, overlay)
+
 
         # toggle overlays
         if shading.type == self.shading_type:
@@ -77,10 +77,11 @@ class SwitchShading(bpy.types.Operator):
 
     # UITLS
 
-    def initiate_overlay_settings(self, context, debug=False):
+    def initiate_overlay_settings(self, context, shading, overlay, debug=False):
         '''
         ensure show_overlay_prefs is stored on the scene level
         create reference to it on the ob via self.prefs
+        check if it's out of sync for the current shading type, which can happen if the user toggles overlay using native Blender UI maybe, and correct it
         '''
         
         if not context.scene.M3.get('show_overlay_prefs', False):
@@ -93,6 +94,12 @@ class SwitchShading(bpy.types.Operator):
                                                       'WIREFRAME': True}
 
         self.prefs = context.scene.M3['show_overlay_prefs']
+
+        # correct out of sync settings
+        if overlay.show_overlays != self.prefs[shading.type]:
+            self.prefs[shading.type] = overlay.show_overlays
+            print("INFO: Corrected out-of-sync Overlay Visibility setting!")
+
 
     def adjust_lights(self, scene, new_shading_type, debug=False):
         m3 = scene.M3

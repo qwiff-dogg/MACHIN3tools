@@ -359,6 +359,11 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
 
     shading_pie_show: BoolProperty(name="Show Shading Pie", default=False)
 
+    overlay_solid: BoolProperty(name="Show Overlays in Solid Shading by default", description="For a newly created scene, or a .blend file where where it wasn't set before, show Overlays for Solid shaded 3D views", default=True)
+    overlay_material: BoolProperty(name="Show Overlays in Material Shading by default", description="For a newly created scene, or a .blend file where where it wasn't set before, show Overlays for Material shaded 3D views", default=False)
+    overlay_rendered: BoolProperty(name="Show Overlays in Rendered Shading by default", description="For a newly created scene, or a .blend file where where it wasn't set before, show Overlays for Rendered shaded 3D views", default=False)
+    overlay_wire: BoolProperty(name="Show Overlays in Wire Shading by default", description="For a newly created scene, or a .blend file where where it wasn't set before, show Overlays for Wire shaded 3D views", default=True)
+
     switchmatcap1: StringProperty(name="Matcap 1", update=update_switchmatcap1)
     switchmatcap2: StringProperty(name="Matcap 2", update=update_switchmatcap2)
     matcap2_force_single: BoolProperty(name="Force Single Color Shading for Matcap 2", default=True)
@@ -1049,8 +1054,20 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
 
             if self.shading_pie_show:
 
+                # OVERLAY VISIBILITY
+
+                bb.label(text='Overlay Visibility (per-shading type)')
+                column = bb.column(align=True)
+
+                row = draw_split_row(self, column, prop='overlay_solid', label='Solid Shading', factor=0.5)
+                draw_split_row(self, row, prop='overlay_material', label='Material Shading', factor=0.5)
+                draw_split_row(self, row, prop='overlay_rendered', label='Rendered Shading', factor=0.5)
+                draw_split_row(self, row, prop='overlay_wire', label='Wire Shading', factor=0.5)
+
+
                 # AUTOSMOOTH
 
+                bb.separator()
                 bb.label(text='Autosmooth')
 
                 column = bb.column(align=True)
