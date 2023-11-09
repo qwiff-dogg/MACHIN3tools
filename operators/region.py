@@ -376,13 +376,16 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
 
         if not context.scene.M3.get('asset_browser_prefs', False):
             context.scene.M3['asset_browser_prefs'] = {}
-            print("initiating asset browser prefs on scene object")
+
+            if debug:
+                print("initiating asset browser prefs on scene object")
 
         self.prefs = context.scene.M3.get('asset_browser_prefs')
 
         # ensure the curretn screen is in the asset browser presf
         if context.screen.name not in self.prefs:
-            print("initiating asset browser prefs for screen", context.screen.name)
+            if debug:
+                print("initiating asset browser prefs for screen", context.screen.name)
 
             empty = {'area_height': 250,
 
