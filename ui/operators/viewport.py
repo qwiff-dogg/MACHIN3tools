@@ -6,6 +6,8 @@ from ... utils.math import average_locations
 from ... items import view_axis_items
 
 
+# ALIGN VIEW
+
 class ViewAxis(bpy.types.Operator):
     bl_idname = "machin3.view_axis"
     bl_label = "View Axis"
@@ -137,23 +139,7 @@ class ViewAxis(bpy.types.Operator):
         return rot
 
 
-class MakeCamActive(bpy.types.Operator):
-    bl_idname = "machin3.make_cam_active"
-    bl_label = "Make Active"
-    bl_description = "Make selected Camera active."
-    bl_options = {'REGISTER', 'UNDO'}
-
-    @classmethod
-    def poll(cls, context):
-        active = context.active_object
-        if active:
-            return active.type == "CAMERA"
-
-    def execute(self, context):
-        context.scene.camera = context.active_object
-
-        return {'FINISHED'}
-
+# SMART CAM
 
 class SmartViewCam(bpy.types.Operator):
     bl_idname = "machin3.smart_view_cam"
@@ -163,7 +149,7 @@ class SmartViewCam(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        if context.space_data:
+        if context.mode == 'OBJECT' and context.space_data:
             return context.space_data.type == 'VIEW_3D'
 
     def invoke(self, context, event):
@@ -191,6 +177,24 @@ class SmartViewCam(bpy.types.Operator):
 
             bpy.ops.view3d.view_camera()
             bpy.ops.view3d.view_center_camera()
+
+        return {'FINISHED'}
+
+
+class MakeCamActive(bpy.types.Operator):
+    bl_idname = "machin3.make_cam_active"
+    bl_label = "Make Active"
+    bl_description = "Make selected Camera active."
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        active = context.active_object
+        if active:
+            return active.type == "CAMERA"
+
+    def execute(self, context):
+        context.scene.camera = context.active_object
 
         return {'FINISHED'}
 
