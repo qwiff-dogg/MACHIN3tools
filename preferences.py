@@ -332,12 +332,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
 
     # Save Pie
 
-    save_pie_versioned_show: BoolProperty(name="Show Save Pie: Versioned Startup File Preferences", default=False)
-    save_pie_undo_save_show: BoolProperty(name="Show Save Pie: Undo Save Preferences", default=False)
-    save_pie_import_show: BoolProperty(name="Show Save Pie: Import/Export Preferences", default=False)
-    save_pie_screencast_show: BoolProperty(name="Show Save Pie: ScreenCast Preferences", default=False)
-
-    save_pie_use_undo_save: BoolProperty(name="Make Pre-Undo Saving available in the Pie", default=False)
+    save_pie_show: BoolProperty(name="Show Save Pie", default=False)
 
     save_pie_show_obj_export: BoolProperty(name="Show .obj Export", default=True)
     save_pie_show_plasticity_export: BoolProperty(name="Show Plasticity Export", default=True)
@@ -357,11 +352,12 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     screencast_use_skribe: BoolProperty(name="Use SKRIBE (dedicated, preferred)", default=True)
     screencast_use_screencast_keys: BoolProperty(name="Use Screencast Keys (addon)", default=True)
 
+    save_pie_use_undo_save: BoolProperty(name="Make Pre-Undo Saving available in the Pie", default=False)
+
 
     # Shading Pie
 
-    shading_pie_autosmooth_show: BoolProperty(name="Show Shading Pie: Autosmooth Preferences", default=False)
-    shading_pie_matcap_show: BoolProperty(name="Show Shading Pie: Matcap Switch Preferences", default=False)
+    shading_pie_show: BoolProperty(name="Show Shading Pie", default=False)
 
     switchmatcap1: StringProperty(name="Matcap 1", update=update_switchmatcap1)
     switchmatcap2: StringProperty(name="Matcap 2", update=update_switchmatcap2)
@@ -612,7 +608,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
         column = bb.column(align=True)
 
         draw_split_row(self, column, prop='activate_modes_pie', text='Modes Pie', label='Quick mode changing', factor=0.25)
-        draw_split_row(self, column, prop='activate_save_pie', text='Save Pie', label='Save, Open, Append and Link. Load Recent, Previous and Next. Purge and Clean Out. ScreenCast', factor=0.25)
+        draw_split_row(self, column, prop='activate_save_pie', text='Save Pie', label='Save, Open, Append and Link. Load Recent, Previous and Next. Purge and Clean Out. ScreenCast and Versioned Startup file', factor=0.25)
         draw_split_row(self, column, prop='activate_shading_pie', text='Shading Pie', label='Control shading, overlays, eevee and some object properties', factor=0.25)
         draw_split_row(self, column, prop='activate_views_pie', text='Views Pie', label='Control views. Create and manage cameras', factor=0.25)
         draw_split_row(self, column, prop='activate_align_pie', text='Alignments Pie', label='Edit mesh and UV alignments', factor=0.25)
@@ -840,9 +836,12 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
             bb.prop(self, 'customize_show', text="Customize", icon='TRIA_DOWN' if self.customize_show else 'TRIA_RIGHT', emboss=False)
 
             if self.customize_show:
-                bbb = bb.box()
-                column = bbb.column(align=True)
-                column.label(text='General')
+
+                # GENERAL
+
+                bb.label(text='General')
+
+                column = bb.column(align=True)
 
                 row = draw_split_row(self, column, prop='custom_theme', label='Theme', factor=0.4)
                 row = draw_split_row(self, row, prop='custom_matcaps', label='Matcaps', factor=0.4)
@@ -852,9 +851,13 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                 row = draw_split_row(self, row, prop='custom_outliner', label='Outliner', factor=0.4)
                 draw_split_row(self, row, prop='custom_startup', label='Startup', factor=0.4)
 
-                bbb = bb.box()
-                column = bbb.column(align=True)
-                column.label(text='Preferences')
+
+                # PREFERENCES
+
+                bb.separator()
+                bb.label(text='Preferences')
+
+                column = bb.column(align=True)
 
                 row = draw_split_row(self, column, prop='custom_preferences_interface', label='Interface', factor=0.4)
                 draw_split_row(self, row, prop='custom_preferences_keymap', label='Keymaps', factor=0.4)
@@ -872,7 +875,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                     row.operator("machin3.restore_keymaps", text="Restore now")
                     row.label()
 
-                column.separator()
+                bb.separator()
 
                 column = bb.column()
                 row = column.row()
@@ -902,37 +905,16 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
 
         if getattr(bpy.types, "MACHIN3_MT_save_pie", False):
 
-            # Startup File
-
-            kmi = get_keymap_item('Window', 'machin3.save_versioned_startup_file')
-
-            if kmi:
-                bb = b.box()
-                bb.prop(self, 'save_pie_versioned_show', text="Save Pie: Versioned Startup File", icon='TRIA_DOWN' if self.save_pie_versioned_show else 'TRIA_RIGHT', emboss=False)
-
-                if self.save_pie_versioned_show:
-                    column = bb.column(align=True)
-
-                    draw_split_row(kmi, column, prop='active', text='Enabled' if kmi.active else 'Disabled', label='Use CTRL + U keymap override')
-
-
-            # Undo Save
-
             bb = b.box()
-            bb.prop(self, 'save_pie_undo_save_show', text="Save Pie: Pre-Undo Save", icon='TRIA_DOWN' if self.save_pie_undo_save_show else 'TRIA_RIGHT', emboss=False)
+            bb.prop(self, 'save_pie_show', text="Save Pie", icon='TRIA_DOWN' if self.save_pie_show else 'TRIA_RIGHT', emboss=False)
 
-            if self.save_pie_undo_save_show:
-                column = bb.column(align=True)
-
-                draw_split_row(self, column, prop='save_pie_use_undo_save', label='Make Pre-Undo Saving available in the Pie', info='Useful if you notice Undoing causing crashes')
+            if self.save_pie_show:
 
 
-            # Import / Export
+                # IMPORT / EXPORT
 
-            bb = b.box()
-            bb.prop(self, 'save_pie_import_show', text="Save Pie: Import/Export", icon='TRIA_DOWN' if self.save_pie_import_show else 'TRIA_RIGHT', emboss=False)
+                bb.label(text='Import / Export')
 
-            if self.save_pie_import_show:
                 column = bb.column(align=True)
 
                 # OBJ
@@ -1004,12 +986,11 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                 split.separator()
 
 
-            # Screen Cast
+                # SCREEN CAST
 
-            bb = b.box()
-            bb.prop(self, 'save_pie_screencast_show', text="Save Pie: Screen Cast", icon='TRIA_DOWN' if self.save_pie_screencast_show else 'TRIA_RIGHT', emboss=False)
+                bb.separator()
+                bb.label(text='Screen Cast')
 
-            if self.save_pie_screencast_show:
                 column = bb.column(align=True)
 
                 draw_split_row(self, column, prop='show_screencast', label='Show Screencast in Save Pie')
@@ -1037,27 +1018,51 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                             draw_split_row(self, col, prop='screencast_use_screencast_keys', label='Use Screencast Keys (addon)', factor=0.3)
 
 
+                # PRE-UNDO SAVE
+
+                bb.separator()
+                bb.label(text='Pre-Undo Save')
+
+                column = bb.column(align=True)
+                draw_split_row(self, column, prop='save_pie_use_undo_save', label='Make Pre-Undo Saving available in the Pie', info='Useful if you notice Undo causing crashes')
+
+
+                # VERSIONED STARTUP FILE
+
+                kmi = get_keymap_item('Window', 'machin3.save_versioned_startup_file')
+
+                if kmi:
+                    bb.separator()
+                    bb.label(text='Versioned Startup File')
+
+                    column = bb.column(align=True)
+                    draw_split_row(kmi, column, prop='active', text='Enabled' if kmi.active else 'Disabled', label='Use CTRL + U keymap override')
+
+
         # SHADING PIE
 
         if getattr(bpy.types, "MACHIN3_MT_shading_pie", False):
 
-            # Autosmooth
 
             bb = b.box()
-            bb.prop(self, 'shading_pie_autosmooth_show', text="Shading Pie: Autosmooth", icon='TRIA_DOWN' if self.shading_pie_autosmooth_show else 'TRIA_RIGHT', emboss=False)
+            bb.prop(self, 'shading_pie_show', text="Shading Pie", icon='TRIA_DOWN' if self.shading_pie_show else 'TRIA_RIGHT', emboss=False)
 
-            if self.shading_pie_autosmooth_show:
+            if self.shading_pie_show:
+
+                # AUTOSMOOTH
+
+                bb.label(text='Autosmooth')
+
                 column = bb.column(align=True)
 
                 draw_split_row(self, column, prop='auto_smooth_angle_presets', label='Auto Smooth Angle Presets shown in the Shading Pie as buttons', factor=0.25)
 
 
-            # Matcap Switch
+                # MATCAP SWITCH
 
-            bb = b.box()
-            bb.prop(self, 'shading_pie_matcap_show', text="Shading Pie: Matcap Switch", icon='TRIA_DOWN' if self.shading_pie_matcap_show else 'TRIA_RIGHT', emboss=False)
+                bb.separator()
+                bb.label(text='Matcap Switch')
 
-            if self.shading_pie_matcap_show:
                 column = bb.column()
 
                 row = column.row()
