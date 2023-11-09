@@ -69,6 +69,9 @@ class Customize(bpy.types.Operator):
 
         return {'FINISHED'}
 
+
+    # CUSTOMIZE
+
     def customize_keymap(self, context):
         docs_mode = True
         docs_mode = False
@@ -1836,46 +1839,44 @@ class Customize(bpy.types.Operator):
         workspaces = [ws for ws in bpy.data.workspaces if ws != context.workspace]
         bpy.data.batch_remove(ids=workspaces)
 
-        # name the basic 3d workspace
-        bpy.data.workspaces[-1].name = "General"
+        # NOTE: closing the timeline just doesn't work anymore, not even by pasing the correct window and screen as context overrides
+        # ####: prevsiouyl all that was needed was the area, now the join op executes but does nothing, and area_close complains about wrong context
 
-        # remove the dope sheet editor
-        screens = [screen for screen in context.workspace.screens if screen.name == 'Layout']
+        return
 
+        for window in context.window_manager.windows:
+            screen = window.screen
 
-        if screens:
-            screen = screens[0]
-            areas = [area for area in screen.areas if area.type == 'VIEW_3D']
+            view3ds = [area for area in screen.areas if area.type == 'VIEW_3D']
+            dopesheets = [area for area in screen.areas if area.type == 'DOPESHEET_EDITOR']
 
-            if areas:
-                area = areas[0]
-
-                override = {'screen': screen,
-                            'area': area}
-
-                areas = [area for area in screen.areas if area.type == 'DOPESHEET_EDITOR']
-
-                if areas:
-                    area = areas[0]
-
-                    bpy.ops.screen.area_join(override, cursor=(area.x, area.y + area.height))
+            if view3ds and dopesheets:
+                area = dopesheets[0]
+                if context.temp_override(window=window, screen=screen, area=dopesheets[0]):
+                    bpy.ops.screen.area_join(cursor=(area.x, area.y + area.height))
+                    # bpy.ops.screen.area_close()
 
     def add_workspaces(self, context):
         print("\n» Adding Workspaces")
 
         areas = [area for screen in context.workspace.screens for area in screen.areas if area.type == "VIEW_3D"]
-        override = {'area': areas[0]}
 
-        # TODO: whatever I try, I can't get them sorted properly, not even with the reorder op
-        # ####: also, running this will turn the prefs into a 3d view for some reason
+        # NOTE: this just doens't work anymore right now, need to invesitage deeper later
+        return
 
-        names = ['General.alt', 'UVs', 'UVs.alt', 'Material', 'World', 'Scripting', 'Scripting.alt']
+        if areas:
 
-        for idx, name in enumerate(names):
-            bpy.ops.workspace.duplicate(override)
+            # TODO: whatever I try, I can't get them sorted properly, not even with the reorder op
+            # ####: also, running this will turn the prefs into a 3d view for some reason
 
-        for name, ws in zip(names, bpy.data.workspaces[1:]):
-            ws.name = name
+            names = ['General.alt', 'UVs', 'UVs.alt', 'Material', 'World', 'Scripting', 'Scripting.alt']
+
+            for idx, name in enumerate(names):
+                with context.temp_override(area=areas[0]):
+                    bpy.ops.workspace.duplicate()
+
+            for name, ws in zip(names, bpy.data.workspaces[1:]):
+                ws.name = name
 
     def customize_workspace_pie(self, context):
         print("\n» Customizing Workspace Pie")
