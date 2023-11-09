@@ -212,7 +212,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
         activate(self, register=self.activate_align_pie, tool="align_pie")
 
     def update_activate_cursor_pie(self, context):
-        activate(self, register=self.activate_cursthreador_pie, tool="cursor_pie")
+        activate(self, register=self.activate_cursor_pie, tool="cursor_pie")
 
     def update_activate_transform_pie(self, context):
         activate(self, register=self.activate_transform_pie, tool="transform_pie")
