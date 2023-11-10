@@ -253,7 +253,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
 
     # Asset Browser tool
 
-    assetbrowser_show: BoolProperty(name="Show Assetbrowser Tools Preferences", default=False)
+    assetbrowser_show: BoolProperty(name="Show Asset Browser Tools Preferences", default=False)
 
     preferred_default_catalog: StringProperty(name="Preferred Default Catalog", default="Model")
     preferred_assetbrowser_workspace_name: StringProperty(name="Preferred Workspace for Assembly Asset Creation", default="General.alt")
@@ -466,8 +466,8 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     activate_align: BoolProperty(name="Align", default=False, update=update_activate_align)
     activate_group: BoolProperty(name="Group", default=False, update=update_activate_group)
     activate_smart_drive: BoolProperty(name="Smart Drive", default=False, update=update_activate_smart_drive)
-    activate_assetbrowser_tools: BoolProperty(name="Assetbrowser Tools", default=False, update=update_activate_assetbrowser_tools)
-    activate_filebrowser_tools: BoolProperty(name="Filebrowser Tools", default=False, update=update_activate_filebrowser_tools)
+    activate_filebrowser_tools: BoolProperty(name="File Browser Tools", default=False, update=update_activate_filebrowser_tools)
+    activate_assetbrowser_tools: BoolProperty(name="Asset Browser Tools", default=False, update=update_activate_assetbrowser_tools)
     activate_region: BoolProperty(name="Toggle Region", default=True, update=update_activate_region)
     activate_render: BoolProperty(name="Render", default=False, update=update_activate_render)
     activate_smooth: BoolProperty(name="Smooth", default=False, update=update_activate_smooth)
@@ -586,9 +586,9 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
         draw_split_row(self, column, prop='activate_align', text='Align', label='Object per-axis Location, Rotation and Scale Alignment, as well as Object-Inbetween-Alignment', factor=0.25)
         draw_split_row(self, column, prop='activate_group', text='Group', label='Group Objects using Empties as Parents', factor=0.25)
         draw_split_row(self, column, prop='activate_smart_drive', text='Smart Drive', label='Use one Object to drive another', factor=0.25)
-        draw_split_row(self, column, prop='activate_assetbrowser_tools', text='Assetbrowser Tools', label='Easy Assemly Asset Creation and Import via the Assetbrowser', factor=0.25)
+        draw_split_row(self, column, prop='activate_assetbrowser_tools', text='Assetbrowser Tools', label='Easy Assemly Asset Creation and Import via the Asset Browser', factor=0.25)
         draw_split_row(self, column, prop='activate_filebrowser_tools', text='Filebrowser Tools', label='Additional Tools/Shortcuts for the Filebrowser', factor=0.25)
-        draw_split_row(self, column, prop='activate_region', text='Toggle Region', label='Toggle 3D View Toolbar, Sidebar and Assetbrowsers using a single T keymap, depending on mouse position', factor=0.25)
+        draw_split_row(self, column, prop='activate_region', text='Toggle Region', label='Toggle 3D View Toolbar, Sidebar and Asset Browsers using a single T keymap, depending on mouse position', factor=0.25)
         draw_split_row(self, column, prop='activate_render', text='Render', label='Tools for efficient, iterative rendering', factor=0.25)
         draw_split_row(self, column, prop='activate_smooth', text='Smooth', label='Toggle Smoothing in Korean Bevel and SubD workflows', factor=0.25)
         draw_split_row(self, column, prop='activate_clipping_toggle', text='Clipping Toggle', label='Viewport Clipping Plane Toggle', factor=0.25)
@@ -782,7 +782,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                 draw_split_row(self, column, prop='region_toggle_assetbrowser_bottom', label='Toggle Asset Browser at Bottom of 3D View')
 
                 if any([self.region_toggle_assetbrowser_top, self.region_toggle_assetbrowser_bottom]):
-                    draw_split_row(self, column, prop='region_warp_mouse_to_asset_border', label='Warp Mouse to Assetbrowser Border')
+                    draw_split_row(self, column, prop='region_warp_mouse_to_asset_border', label='Warp Mouse to Asset Browser Border')
 
 
         # RENDER
