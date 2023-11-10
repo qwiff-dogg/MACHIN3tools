@@ -684,7 +684,7 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
                             bpy.ops.machin3.draw_label(text="WARNING: Assetbrowser couldn't be set up yet, due to Blender shenanigans.", coords=coords, color=red, alpha=1, time=5)
 
                             coords = (context.region.width / 2, 80 * scale if region_type == 'ASSET_BOTTOM' else context.region.height - (100 * scale + context.region.height * area_split_factor))
-                            bpy.ops.machin3.draw_label(text="This is Normal on a new 3D View!", coords=coords, color=red, alpha=1, time=5)
+                            bpy.ops.machin3.draw_label(text="This is normal on a new 3D View!", coords=coords, color=red, alpha=1, time=5)
 
                             coords = (context.region.width / 2, 60 * scale if region_type == 'ASSET_BOTTOM' else context.region.height - (120 * scale + context.region.height * area_split_factor))
                             bpy.ops.machin3.draw_label(text="TO FIX IT, DO THIS: Change THIS 3D View into an Asset browser, and back again", coords=coords, color=yellow, alpha=1, time=5)
