@@ -2,10 +2,9 @@ bl_info = {
     "name": "MACHIN3tools",
     "author": "MACHIN3, TitusLVR",
     "version": (1, 6, 0),
-    "version": (1, 6, 0, "DeusEx.rc-1"),
     "blender": (3, 6, 0),
     "location": "",
-    "description": "Streamlining Blender 3.3+.",
+    "description": "Streamlining Blender 3.6+.",
     "warning": "",
     "doc_url": "https://machin3.io/MACHIN3tools/docs",
     "category": "3D View"}
