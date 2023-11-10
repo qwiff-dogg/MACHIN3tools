@@ -279,7 +279,6 @@ class Customize(bpy.types.Operator):
                             print(deactivated_str, kmi_to_string(kmi, docs_mode=docs_mode))
                             kmi.active = False
 
-
                 if kmi.idname == "transform.translate":
                     if kmi.map_type == "MOUSE" and kmi.value == 'CLICK_DRAG':
                         print(deactivated_str, kmi_to_string(kmi, docs_mode=docs_mode))
@@ -299,6 +298,10 @@ class Customize(bpy.types.Operator):
                     if kmi.properties.texture_space:
                         print(deactivated_str, kmi_to_string(kmi, docs_mode=docs_mode))
                         kmi.active = False
+
+                if kmi.idname == "view3d.zoom_border":
+                    print(deactivated_str, kmi_to_string(kmi, docs_mode=docs_mode))
+                    kmi.active = False
 
 
             # 3D VIEW TOOL: CURSOR
