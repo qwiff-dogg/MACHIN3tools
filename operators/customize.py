@@ -850,12 +850,12 @@ class Customize(bpy.types.Operator):
             print(" Changed 3D Viewport Axis to MINIMAL")
             v.mini_axis_type = 'MINIMAL'
 
-        if get_prefs().custom_preferences_navigation:
-            print("\n» Changing Preferences: Navigation")
+        if get_prefs().custom_preferences_input_navigation:
+            print("\n» Changing Preferences: Input and Navigation")
 
             i = prefs.inputs
 
-            print(" Inverted Mouse Zoom")
+            print(" Enabled Mouse Zoom Invert")
             i.invert_mouse_zoom = True
 
             print(" Enabled Zoom to Mouse Position")
@@ -863,6 +863,32 @@ class Customize(bpy.types.Operator):
 
             print(" Changed Double Click Speed to 200")
             i.mouse_double_click_time = 200
+
+            print(" Changed NDOF Dead Zone to 0.03")
+            i.ndof_deadzone = 0.03
+
+            print(" Disabled NDOF Zoom Invert")
+            i.ndof_zoom_invert = False
+
+            print(" Disabled NDOF Lock Camera Pan/Zoom")
+            i.ndof_lock_camera_pan_zoom = False
+
+            print(" Changed NDOF View Rotate Method to Turntable")
+            i.ndof_view_rotate_method = 'TURNTABLE'
+
+            print(" Disabled NDOF Pan Axis Inversions")
+            i.ndof_panx_invert_axis = False
+            i.ndof_pany_invert_axis = False
+            i.ndof_panz_invert_axis = False
+
+            print(" Disabled NDOF Rotation Axis Inversions")
+            i.ndof_rotx_invert_axis = False
+            i.ndof_roty_invert_axis = False
+            i.ndof_rotz_invert_axis = False
+
+            print(" Disabled NDOF Lock Horizon")
+            i.ndof_lock_horizon = False
+
 
         if get_prefs().custom_preferences_keymap:
             print("\n» Changing Preferences: Keymap")

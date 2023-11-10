@@ -315,7 +315,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
     custom_outliner: BoolProperty(name="Outliner", default=False)
     custom_preferences_interface: BoolProperty(name="Preferences: Interface", default=False)
     custom_preferences_viewport: BoolProperty(name="Preferences: Viewport", default=False)
-    custom_preferences_navigation: BoolProperty(name="Preferences: Navigation", default=False)
+    custom_preferences_input_navigation: BoolProperty(name="Preferences: Input & Navigation", default=False)
     custom_preferences_keymap: BoolProperty(name="Preferences: Keymap", default=False, update=update_custom_preferences_keymap)
     custom_preferences_system: BoolProperty(name="Preferences: System", default=False)
     custom_preferences_save: BoolProperty(name="Preferences: Save & Load", default=False)
@@ -869,7 +869,7 @@ class MACHIN3toolsPreferences(bpy.types.AddonPreferences):
                 draw_split_row(self, row, prop='custom_preferences_viewport', label='Viewport', factor=0.4)
 
                 row = draw_split_row(self, column, prop='custom_preferences_system', label='System', factor=0.4)
-                draw_split_row(self, row, prop='custom_preferences_navigation', label='Navigation', factor=0.4)
+                draw_split_row(self, row, prop='custom_preferences_input_navigation', label='Input & Navigation', factor=0.4)
                 draw_split_row(self, row, prop='custom_preferences_save', label='Save', factor=0.4)
 
                 if self.dirty_keymaps:
