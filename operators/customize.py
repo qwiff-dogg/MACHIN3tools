@@ -279,10 +279,9 @@ class Customize(bpy.types.Operator):
                             print(deactivated_str, kmi_to_string(kmi, docs_mode=docs_mode))
                             kmi.active = False
 
-                if kmi.idname == "transform.translate":
-                    if kmi.map_type == "MOUSE" and kmi.value == 'CLICK_DRAG':
-                        print(deactivated_str, kmi_to_string(kmi, docs_mode=docs_mode))
-                        kmi.active = False
+                if kmi.idname == "view3d.zoom_border":
+                    print(deactivated_str, kmi_to_string(kmi, docs_mode=docs_mode))
+                    kmi.active = False
 
                 if kmi.idname == "view3d.view_axis":
                     if kmi.map_type == "MOUSE" and kmi.value == 'CLICK_DRAG':
@@ -295,13 +294,15 @@ class Customize(bpy.types.Operator):
                     print(to_str, kmi_to_string(kmi, docs_mode=docs_mode))
 
                 if kmi.idname == "transform.translate":
+                    if kmi.map_type == "MOUSE" and kmi.value == 'CLICK_DRAG':
+                        print(deactivated_str, kmi_to_string(kmi, docs_mode=docs_mode))
+                        kmi.active = False
+
+                if kmi.idname == "transform.translate":
                     if kmi.properties.texture_space:
                         print(deactivated_str, kmi_to_string(kmi, docs_mode=docs_mode))
                         kmi.active = False
 
-                if kmi.idname == "view3d.zoom_border":
-                    print(deactivated_str, kmi_to_string(kmi, docs_mode=docs_mode))
-                    kmi.active = False
 
 
             # 3D VIEW TOOL: CURSOR
@@ -375,6 +376,26 @@ class Customize(bpy.types.Operator):
                         print(changed_str, kmi_to_string(kmi, docs_mode=docs_mode))
                         kmi.type = 'DOWN_ARROW'
                         print(to_str, kmi_to_string(kmi, docs_mode=docs_mode))
+
+                if bpy.app.version >= (4, 0, 0):
+
+                    if kmi.idname == "transform.translate":
+                        if kmi.type == "G" and kmi.properties.alt_navigation:
+                            print(changed_str, kmi_to_string(kmi, docs_mode=docs_mode))
+                            kmi.properties.alt_navigation = False
+                            print(to_str, kmi_to_string(kmi, docs_mode=docs_mode))
+
+                    if kmi.idname == "transform.rotate":
+                        if kmi.type == "R" and kmi.properties.alt_navigation:
+                            print(changed_str, kmi_to_string(kmi, docs_mode=docs_mode))
+                            kmi.properties.alt_navigation = False
+                            print(to_str, kmi_to_string(kmi, docs_mode=docs_mode))
+
+                    if kmi.idname == "transform.resize":
+                        if kmi.type == "S" and kmi.properties.alt_navigation:
+                            print(changed_str, kmi_to_string(kmi, docs_mode=docs_mode))
+                            kmi.properties.alt_navigation = False
+                            print(to_str, kmi_to_string(kmi, docs_mode=docs_mode))
 
 
             # OBJECT NON-MODAL
@@ -557,6 +578,27 @@ class Customize(bpy.types.Operator):
                         kmi.active = False
 
 
+                if bpy.app.version >= (4, 0, 0):
+
+                    if kmi.idname == "transform.translate":
+                        if kmi.type == "G" and kmi.properties.alt_navigation:
+                            print(changed_str, kmi_to_string(kmi, docs_mode=docs_mode))
+                            kmi.properties.alt_navigation = False
+                            print(to_str, kmi_to_string(kmi, docs_mode=docs_mode))
+
+                    if kmi.idname == "transform.rotate":
+                        if kmi.type == "R" and kmi.properties.alt_navigation:
+                            print(changed_str, kmi_to_string(kmi, docs_mode=docs_mode))
+                            kmi.properties.alt_navigation = False
+                            print(to_str, kmi_to_string(kmi, docs_mode=docs_mode))
+
+                    if kmi.idname == "transform.resize":
+                        if kmi.type == "S" and kmi.properties.alt_navigation:
+                            print(changed_str, kmi_to_string(kmi, docs_mode=docs_mode))
+                            kmi.properties.alt_navigation = False
+                            print(to_str, kmi_to_string(kmi, docs_mode=docs_mode))
+
+
             # CURVE
 
             km = kc.keymaps.get("Curve")
@@ -567,6 +609,35 @@ class Customize(bpy.types.Operator):
                 if kmi.idname == "curve.make_segment" and kmi.type == 'F':
                     print(deactivated_str, kmi_to_string(kmi, docs_mode=docs_mode))
                     kmi.active = False
+
+                if kmi.idname == "curve.select_linked" and kmi.type == 'L':
+                    print(changed_str, kmi_to_string(kmi, docs_mode=docs_mode))
+                    kmi.type = "LEFTMOUSE"
+                    kmi.value = "DOUBLE_CLICK"
+                    kmi.ctrl = False
+                    kmi.shift = True
+                    print(to_str, kmi_to_string(kmi, docs_mode=docs_mode))
+
+                if bpy.app.version >= (4, 0, 0):
+
+                    if kmi.idname == "transform.translate":
+                        if kmi.type == "G" and kmi.properties.alt_navigation:
+                            print(changed_str, kmi_to_string(kmi, docs_mode=docs_mode))
+                            kmi.properties.alt_navigation = False
+                            print(to_str, kmi_to_string(kmi, docs_mode=docs_mode))
+
+                    if kmi.idname == "transform.rotate":
+                        if kmi.type == "R" and kmi.properties.alt_navigation:
+                            print(changed_str, kmi_to_string(kmi, docs_mode=docs_mode))
+                            kmi.properties.alt_navigation = False
+                            print(to_str, kmi_to_string(kmi, docs_mode=docs_mode))
+
+                    if kmi.idname == "transform.resize":
+                        if kmi.type == "S" and kmi.properties.alt_navigation:
+                            print(changed_str, kmi_to_string(kmi, docs_mode=docs_mode))
+                            kmi.properties.alt_navigation = False
+                            print(to_str, kmi_to_string(kmi, docs_mode=docs_mode))
+
 
             """
             not longer necessary as of 2.83, maybe earlier?
