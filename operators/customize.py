@@ -232,6 +232,12 @@ class Customize(bpy.types.Operator):
                 # """
                 if kmi.idname == "view3d.view_selected":
 
+                    if kmi.type == "NDOF_BUTTON_FIT":
+                        print(changed_str, kmi_to_string(kmi, docs_mode=docs_mode))
+                        kmi.type = "NDOF_BUTTON_1"
+                        kmi.idname = "view3d.view_center_pick"
+                        print(to_str, kmi_to_string(kmi, docs_mode=docs_mode))
+
                     # NOTE: technically no longer necessary IF the Focus tool is activated and mapped to F in view selected mode
                     if kmi.type == "NUMPAD_PERIOD" and not kmi.properties.use_all_regions:
                         print(changed_str, kmi_to_string(kmi, docs_mode=docs_mode))
@@ -761,6 +767,7 @@ class Customize(bpy.types.Operator):
             '''
 
             # MESH
+
             km = kc.keymaps.get("Mesh")
             print_keymap_title(km)
 
@@ -785,6 +792,7 @@ class Customize(bpy.types.Operator):
             kmi = km.keymap_items.new("mesh.subdivide", "TWO", "PRESS", alt=True)
             kmi.properties.smoothness = 0
             print(added_str, kmi_to_string(kmi, docs_mode=docs_mode))
+
 
         kc = context.window_manager.keyconfigs.user
 
