@@ -450,7 +450,11 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
             if region.type == 'HEADER':
                 context.scene.M3['asset_browser_prefs'][screen_name][region_type]['header_align'] = region.alignment
 
-    def apply_asset_browser_area_settings(self, context, area, params, screen_name, region_type):
+        # print()
+        # print("storing")
+        # printd(context.scene.M3['asset_browser_prefs'].to_dict())
+
+    def apply_asset_browser_area_settings(self, context, area, space, params, screen_name, region_type):
         '''
         apply the stored asset browsr settings on the newly created area/space/params for the given screen_name and region_type
         '''
@@ -493,10 +497,10 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
             # new_space.show_region_toolbar = not show_region_toolbar
             # NOTE: I think it was due to the T key still being passed through, so the normal toggle took over!
             # ####: it's no longer happening now, that the ToggleASSETBROWSERRegion() takes over in that region
-            show_region_toolbar = show_region_toolbar
+            space.show_region_toolbar = show_region_toolbar
 
             # set the 'N panel' too, which in the FILE_BROWSER is called show_region_tool_props, not show_region_UI like in the 3d view!
-            show_region_tool_props = show_region_tool_props
+            space.show_region_tool_props = show_region_tool_props
 
             params.filter_search = filter_search
             params.filter_asset_id.filter_action = filter_action
@@ -671,7 +675,7 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
 
                         # apply stored settings to new asset browser area
                         if new_space.params:
-                            self.apply_asset_browser_area_settings(context, new_area, new_space.params, screen_name, region_type)
+                            self.apply_asset_browser_area_settings(context, new_area, new_space, new_space.params, screen_name, region_type)
 
                         # NOTE: space.params can be None, so we can't set Library, or any other of the spaces settings
                         # ####: however, if you manually turn the 3d view into an asset browser and back into a 3d view again, then params will be available!
