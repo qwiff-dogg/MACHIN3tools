@@ -50,7 +50,6 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
         return {'FINISHED'}
 
 
-
     # UTILS
 
     def get_areas(self, context, debug=False):
@@ -199,14 +198,14 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
 
     def get_asset_shelf(self, regions, debug=False):
         '''
-        check if there actually area asset shelf regions
+        check if there actually are asset shelf regions
         and if so, wether it's at the BOTTOM or TOP
         '''
 
         shelf = regions.get('ASSET_SHELF', None)
         header = regions.get('ASSET_SHELF_HEADER', None)
 
-        # the regions should always exist, but that doesn't mean they are available to the user
+        # the regions should always exist (in Blender 4.0), but that doesn't mean they are available to the user
         if shelf and header:
             if debug:
                 print()
@@ -223,7 +222,7 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
                     if debug:
                         print(" shelf is collapsed")
 
-                # NOTE: of 4.0, you can flip the shelf using F5, but you can't flip the shelf header yet
+                # NOTE: in 4.0 you can flip the shelf using F5, but you can't flip the shelf header yet
                 if debug:
                     print(" alignment:", shelf.alignment)
 
@@ -534,7 +533,7 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
         region = regions[region_type] if region_type in regions else None
         screen_name = context.screen.name
 
-        # get settingsbpy.ops.screen.back_to_previous()
+        # get settings
         toggle_asset_shelf = get_prefs().region_toggle_assetshelf
         toggle_asset_top = get_prefs().region_toggle_assetbrowser_top
         toggle_asset_bottom = get_prefs().region_toggle_assetbrowser_bottom
@@ -587,7 +586,7 @@ class ToggleVIEW3DRegion(bpy.types.Operator):
 
             if shelf and toggle_asset_shelf:
 
-                # only toggle the shel if it's actually aligned with the region_type
+                # only toggle the shelf if it's actually aligned with the region_type
                 # because in addition to the shelf we still want to be albe to toggle the browser as well, just on the oder side of the
                 if region_type == 'ASSET_BOTTOM' and shelf.alignment == 'BOTTOM' or region_type == 'ASSET_TOP' and shelf.alignment == 'TOP':
                     space.show_region_asset_shelf = not space.show_region_asset_shelf
