@@ -1,4 +1,5 @@
-from mathutils import Matrix
+from mathutils import Matrix, Vector
+from bpy_extras.view3d_utils import location_3d_to_region_2d
 
 
 def set_xray(context):
@@ -22,12 +23,15 @@ def reset_xray(context):
 
 
 def update_local_view(space_data, states):
-    """
+    '''
     states: list of (obj, bool) tuples, True being in local view, False being out
-    """
+    NOTE: obj can be nonw, for instance when loading a file and the obj has somehow been deleted
+    '''
+    
     if space_data.local_view:
         for obj, local in states:
-            obj.local_view_set(space_data, local)
+            if obj:
+                obj.local_view_set(space_data, local)
 
 
 def reset_viewport(context, disable_toolbar=False):
@@ -47,3 +51,29 @@ def reset_viewport(context, disable_toolbar=False):
 
                         if disable_toolbar:
                             space.show_region_toolbar = False
+
+
+def sync_light_visibility(scene):
+    '''
+    set light's hide_render prop based on light's hide_get()
+    '''
+
+    # print("syncing light visibility/renderability")
+
+    for view_layer in scene.view_layers:
+        lights = [obj for obj in view_layer.objects if obj.type == 'LIGHT']
+
+        for light in lights:
+            hidden = light.hide_get(view_layer=view_layer)
+
+            if light.hide_render != hidden:
+                light.hide_render = hidden
+
+
+def get_loc_2d(context, loc):
+    '''
+    project 3d location into 2d space
+    '''
+
+    loc_2d = location_3d_to_region_2d(context.region, context.region_data, loc)
+    return loc_2d if loc_2d else Vector((-1000, -1000))

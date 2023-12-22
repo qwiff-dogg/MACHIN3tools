@@ -2,7 +2,7 @@ import bpy
 from bpy.props import EnumProperty, BoolProperty
 import bmesh
 from mathutils import Vector, Matrix, geometry
-from ... utils.math import get_center_between_verts, create_rotation_difference_matrix_from_quat, get_loc_matrix, create_selection_bbox, get_right_and_up_axes
+from ... utils.math import get_center_between_verts, create_rotation_difference_matrix, get_loc_matrix, create_selection_bbox, get_right_and_up_axes
 from ... items import axis_items, align_type_items, axis_mapping_dict, align_direction_items, align_space_items, align_mode_items
 from ... utils.selection import get_selected_vert_sequences, get_selection_islands
 from ... utils.ui import popup_message
@@ -182,7 +182,7 @@ class AlignEditMesh(bpy.types.Operator):
             elif type == "CURSOR":
                 if space == 'LOCAL':
                     c_world = context.scene.cursor.location
-                    c_local = mx.inverted() @ c_world
+                    c_local = mx.inverted_safe() @ c_world
                     target = c_local[axis]
 
                 elif space == 'WORLD':
@@ -303,7 +303,7 @@ class CenterEditMesh(bpy.types.Operator):
             target[axis] = 0
 
             # create translation matrix (in local space again)
-            mxt = get_loc_matrix(active.matrix_world.inverted().to_3x3() @ (target - origin))
+            mxt = get_loc_matrix(active.matrix_world.inverted_safe().to_3x3() @ (target - origin))
 
         elif space == 'CURSOR':
             # bring into cursor space
@@ -312,7 +312,7 @@ class CenterEditMesh(bpy.types.Operator):
             target[axis] = 0
 
             # create translation matrix (in local space again)
-            mxt = get_loc_matrix(active.matrix_world.inverted().to_3x3() @ mx.to_3x3() @ (target - origin))
+            mxt = get_loc_matrix(active.matrix_world.inverted_safe().to_3x3() @ mx.to_3x3() @ (target - origin))
 
         # move the selection
         for v in verts:
@@ -354,7 +354,7 @@ class AlignObjectToEdge(bpy.types.Operator):
                 loc, _, _ = obj.matrix_world.decompose()
 
                 # get rotation matrix
-                rmx = create_rotation_difference_matrix_from_quat(v_obj, v_target)
+                rmx = create_rotation_difference_matrix(v_obj, v_target)
 
                 # bring into the origin, rotate and bring back
                 obj.matrix_world = get_loc_matrix(loc) @ rmx @ get_loc_matrix(-loc) @ obj.matrix_world

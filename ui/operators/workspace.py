@@ -1,5 +1,6 @@
 import bpy
 from bpy.props import StringProperty
+from ... utils.registration import get_addon
 
 
 class SwitchWorkspace(bpy.types.Operator):
@@ -49,6 +50,17 @@ class SwitchWorkspace(bpy.types.Operator):
         if ws and view:
             self.set_view(ws, view)
 
+
+        """
+        # when 3d view and asset browser present, ensure you are not in SOLID or WIREFRAME shading!
+        if ws:
+            space_data = self.has_asset_browser(ws)
+
+            if space_data:
+                if space_data.shading.type in ['SOLID', 'WIREFRAME']:
+                    space_data.shading.type = 'MATERIAL'
+        """
+
         return {'FINISHED'}
 
     def set_shading_and_overlay(self, workspace, shading, overlay):
@@ -72,6 +84,7 @@ class SwitchWorkspace(bpy.types.Operator):
                             space.shading.use_scene_world_render = shading['use_scene_world_render']
 
                             space.shading.show_cavity = shading['show_cavity']
+                            space.shading.show_shadows = shading['show_shadows']
                             space.shading.cavity_type = shading['cavity_type']
                             space.shading.cavity_ridge_factor = shading['cavity_ridge_factor']
                             space.shading.cavity_valley_factor = shading['cavity_valley_factor']
@@ -126,6 +139,7 @@ class SwitchWorkspace(bpy.types.Operator):
             s['use_scene_world_render'] = shading.use_scene_world_render
 
             s['show_cavity'] = shading.show_cavity
+            s['show_shadows'] = shading.show_shadows
             s['cavity_type'] = shading.cavity_type
             s['cavity_ridge_factor'] = shading.cavity_ridge_factor
             s['cavity_valley_factor'] = shading.cavity_valley_factor
@@ -206,3 +220,51 @@ class SwitchWorkspace(bpy.types.Operator):
 
             # don't get camera views
             return view if r3d.view_perspective != 'CAMERA' else None
+
+    def has_asset_browser(self, workspace):
+        '''
+        find out of the workspace has a 3d view and an asset browser
+        return the 3d view's space data if so
+        '''
+
+        space_data = None
+        has_asset_browser = False
+
+        for screen in workspace.screens:
+            for area in screen.areas:
+                # print(" AREA", area, area.type)
+
+                if area.type == 'VIEW_3D' and not space_data:
+                    space_data = area.spaces[0]
+
+                if area.type == 'FILE_BROWSER':
+                    # print("  ui_type", area.ui_type)
+
+                    if area.ui_type == 'ASSETS':
+                        has_asset_browser = True
+
+                    # for space in area.spaces:
+                        # print("  SPACE", space, space.type)
+
+                        # if space.type == 'FILE_BROWSER':
+                            # print("   browse_mode", space.browse_mode)
+
+        if has_asset_browser:
+            return space_data
+
+
+class GetIconNameHelp(bpy.types.Operator):
+    bl_idname = "machin3.get_icon_name_help"
+    bl_label = "MACHIN3: Get Icon Name Help"
+    bl_description = ""
+    bl_options = {'INTERNAL'}
+
+    def execute(self, context):
+        icon_viewer, name, _, _ = get_addon('Icon Viewer')
+
+        if not icon_viewer:
+            bpy.ops.preferences.addon_enable(module=name)
+
+        bpy.ops.iv.icons_show('INVOKE_DEFAULT', filter_auto_focus="", filter="", selected_icon="")
+
+        return {'FINISHED'}

@@ -3,8 +3,13 @@ from bpy.props import BoolProperty, EnumProperty, FloatProperty
 from mathutils import Matrix, Vector, Euler, Quaternion
 from math import radians
 from .. utils.math import get_loc_matrix, get_rot_matrix, get_sca_matrix, average_locations
-from .. utils.object import compensate_children
+from .. utils.object import compensate_children, parent, unparent
+from .. utils.draw import draw_mesh_wire, draw_label, update_HUD_location
+from .. utils.mesh import get_coords
+from .. utils.ui import init_cursor, init_status, finish_status
+from .. utils.system import printd
 from .. items import obj_align_mode_items
+from .. colors import green, blue
 
 
 class Align(bpy.types.Operator):
@@ -381,3 +386,272 @@ class Align(bpy.types.Operator):
 
         if active.children and context.scene.tool_settings.use_transform_skip_children:
             compensate_children(active, oldmx, mx)
+
+
+def draw_align_relative_status(op):
+    def draw(self, context):
+        layout = self.layout
+
+        row = layout.row(align=True)
+
+        row.label(text="Align Relative")
+
+        row.separator(factor=2)
+        row.label(text="", icon='EVENT_SPACEKEY')
+        row.label(text="Confirm")
+
+        row.label(text="", icon='MOUSE_RMB')
+        row.label(text="Cancel")
+
+        row.separator(factor=10)
+        row.label(text="", icon='MOUSE_LMB')
+        row.label(text="Select Single")
+
+        row.separator(factor=2)
+        row.label(text="", icon='EVENT_SHIFT')
+        row.label(text="", icon='MOUSE_LMB')
+        row.label(text="Select Multiple")
+
+        row.separator(factor=2)
+        row.label(text="", icon='MOUSE_MMB')
+        row.label(text=f"Instance: {op.instance}")
+
+    return draw
+
+
+class AlignRelative(bpy.types.Operator):
+    bl_idname = "machin3.align_relative"
+    bl_label = "MACHIN3: Align Relative"
+    bl_description = ""
+    bl_options = {'REGISTER', 'UNDO'}
+
+    instance: BoolProperty(name="Instance", default=False)
+
+    @classmethod
+    def poll(cls, context):
+        if context.mode == 'OBJECT':
+            active = context.active_object
+            return active and [obj for obj in context.selected_objects if obj != active]
+
+    def draw_VIEW3D(self):
+        for obj in self.targets:
+            for batch in self.batches[obj]:
+                draw_mesh_wire(batch, color=green if self.instance else blue, alpha=0.5)
+
+    def draw_HUD(self, args):
+        context, event = args
+
+        draw_label(context, title='Instance' if self.instance else 'Duplicate', coords=Vector((self.HUD_x, self.HUD_y)), center=False, color=green if self.instance else blue)
+
+    def modal(self, context, event):
+        context.area.tag_redraw()
+
+        if event.type == 'MOUSEMOVE':
+            update_HUD_location(self, event, offsetx=10, offsety=10)
+
+        # update target object list, usually you could do this only on LEFTMOUSE events, but the retarded, default RELEASE select keymap prevents this
+        self.targets = [obj for obj in context.selected_objects if obj not in self.orig_sel]
+
+        # create batches for VIEW3D preview
+        for obj in self.targets:
+            if obj not in self.batches:
+                self.batches[obj] = [get_coords(aligner.data, obj.matrix_world @ self.deltamx[aligner], indices=True) for aligner in self.aligners if aligner.data]
+
+        events = ['MOUSEMOVE', 'WHEELUPMOUSE', 'WHEELDOWNMOUSE']
+
+        if event.type in events:
+
+            if event.type == 'MOUSEMOVE':
+                self.mousepos = Vector((event.mouse_region_x, event.mouse_region_y))
+                update_HUD_location(self, event, offsetx=10, offsety=10)
+
+            # create instances or duplicates
+            elif event.type in ['WHEELUPMOUSE', 'WHEELDOWNMOUSE']:
+                self.instance = not self.instance
+                context.active_object.select_set(True)
+
+
+        # SELECTION PASSTHROUGH
+
+        if event.type == 'LEFTMOUSE':
+            return {'PASS_THROUGH'}
+
+
+        # NAVIGATION PASSTHROUGH
+
+        elif event.type == 'MIDDLEMOUSE':
+            return {'PASS_THROUGH'}
+
+
+        # FINISH
+
+        if event.type == 'SPACE':
+            self.finish()
+
+            # create duplicares/instances
+
+            for target in self.targets:
+                self.target_map[target] = {'dups': [],
+                                           'map': {}}
+
+                for aligner in self.aligners:
+                    dup = aligner.copy()
+
+                    # collect dups and their relation to the original aligners
+                    self.target_map[target]['dups'].append(dup)
+                    self.target_map[target]['map'][aligner] = dup
+                    # self.target_map[target]['map'][dup] = aligner
+
+                    if aligner.data:
+                        dup.data = aligner.data if self.instance else aligner.data.copy()
+
+                    dup.matrix_world = target.matrix_world @ self.deltamx[aligner]
+
+                    for col in aligner.users_collection:
+                        col.objects.link(dup)
+
+
+            if self.debug:
+                printd(self.target_map, name='target map')
+
+            for target, dup_data in self.target_map.items():
+                if self.debug:
+                    print(target.name)
+
+                for dup in dup_data['dups']:
+                    if self.debug:
+                        print("", dup.name, " > ", dup_data['map'][dup].name)
+
+                    # re-parent the dup if necessary to the target or another dup
+                    self.reparent(dup_data, target, dup, debug=self.debug)
+
+                    # re-mirror the dup if necessary to the target or another dup
+                    self.remirror(dup_data, target, dup, debug=self.debug)
+
+                    # re-group the dup if necessary
+                    self.regroup(dup_data, target, dup, debug=self.debug)
+
+
+            # select only the new dups
+            bpy.ops.object.select_all(action='DESELECT')
+
+            for target, dup_data in self.target_map.items():
+                for dup in dup_data['dups']:
+                    dup.select_set(True)
+                    context.view_layer.objects.active = dup
+
+            return {'FINISHED'}
+
+        elif event.type in ['RIGHTMOUSE', 'ESC']:
+            self.finish()
+
+            # restore original selection
+            bpy.ops.object.select_all(action='DESELECT')
+
+            for obj in self.orig_sel:
+                obj.select_set(True)
+
+                if obj == self.active:
+                    context.view_layer.objects.active = obj
+
+            return {'CANCELLED'}
+
+        return {'RUNNING_MODAL'}
+
+    def finish(self):
+        bpy.types.SpaceView3D.draw_handler_remove(self.VIEW3D, 'WINDOW')
+        bpy.types.SpaceView3D.draw_handler_remove(self.HUD, 'WINDOW')
+
+        # reset the statusbar
+        finish_status(self)
+
+    def invoke(self, context, event):
+        self.debug = True
+        self.debug = False
+
+        self.active = context.active_object
+        self.aligners = [obj for obj in context.selected_objects if obj != self.active]
+
+        if self.debug:
+            print("reference:", self.active.name)
+            print(" aligners:", [obj.name for obj in self.aligners])
+
+        self.orig_sel = [self.active] + self.aligners
+        self.targets = []
+        self.batches = {}
+        self.target_map = {}
+
+        # get the deltamatrices, representing the relativ transforms
+        self.deltamx = {obj: self.active.matrix_world.inverted_safe() @ obj.matrix_world for obj in self.aligners}
+        # printd(self.deltamx)
+
+        # init the mouse cursor for the modal HUD
+        init_cursor(self, event)
+
+        # statusbar
+        init_status(self, context, func=draw_align_relative_status(self))
+        self.active.select_set(True)
+
+
+        # handlers
+        args = (context, event)
+        self.HUD = bpy.types.SpaceView3D.draw_handler_add(self.draw_HUD, (args, ), 'WINDOW', 'POST_PIXEL')
+        self.VIEW3D = bpy.types.SpaceView3D.draw_handler_add(self.draw_VIEW3D, (), 'WINDOW', 'POST_VIEW')
+
+        context.window_manager.modal_handler_add(self)
+        return {'RUNNING_MODAL'}
+
+    def reparent(self, dup_data, target, dup, debug=False):
+        '''
+        check if the dup is parented to the reference object or one of the other aligners
+        and if so, reparerent accordingly to either the target, or the aligner dup
+        '''
+
+        if dup.parent and dup.parent in self.orig_sel:
+            if dup.parent == self.active:
+                pobj = target
+
+                if debug:
+                    print("  duplicate is parented to reference", dup.parent.name)
+
+            else:
+                pobj = dup_data['map'][dup.parent]
+                if debug:
+                    print("  duplicate is parented to another aligner", dup.parent.name)
+
+            unparent(dup)
+            parent(dup, pobj)
+
+    def remirror(self, dup_data, target, dup, debug=False):
+        '''
+        check if the dup is mirrored across the reference object or one of the other aligners
+        and if so, remirror accordingly across either the target, or the aligner dup
+        '''
+
+        mirrors = [mod for mod in dup.modifiers if mod.type == 'MIRROR' and mod.mirror_object in self.orig_sel]
+
+        for mod in mirrors:
+            if mod.mirror_object == self.active:
+                mobj = target
+                if debug:
+                    print("  duplicate is mirrored accross reference", mod.mirror_object.name)
+
+            else:
+                mobj = dup_data['map'][mod.mirror_object]
+                if debug:
+                    print("  duplicate is mirrored accross another aligner", mod.mirror_object.name)
+
+            mod.mirror_object = mobj
+
+    def regroup(self, dup_data, target, dup, debug=False):
+        '''
+        re-group, if the dup is in the same group as the reference, and the target is also in a group
+        '''
+
+        if target.M3.is_group_object and target.parent and target.parent.M3.is_group_empty:
+            if (dup.M3.is_group_object and self.active.M3.is_group_object) and (dup.parent and self.active.parent) and (dup.parent.M3.is_group_empty and self.active.parent.M3.is_group_empty) and (dup.parent == self.active.parent):
+                if debug:
+                    print("  regrouping to", target.name)
+
+                unparent(dup)
+                parent(dup, target.parent)

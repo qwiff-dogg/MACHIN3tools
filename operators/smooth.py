@@ -18,9 +18,10 @@ class ToggleSmooth(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         if context.mode == 'EDIT_MESH':
-            return True
+            bm = bmesh.from_edit_mesh(context.active_object.data)
+            return bm.faces
         elif context.mode == 'OBJECT':
-            return [obj for obj in context.selected_objects if obj.type == 'MESH']
+            return [obj for obj in context.selected_objects if obj.type == 'MESH' and obj.data.polygons]
 
     def draw(self, context):
         layout = self.layout
@@ -82,18 +83,14 @@ class ToggleSmooth(bpy.types.Operator):
 
         overlay = context.space_data.overlay
 
-        subd = subds[0]
-
-        if not subd.show_on_cage:
-            subd.show_on_cage = True
-
+        for subd in subds:
+            if not subd.show_on_cage:
+                subd.show_on_cage = True
 
         # ENABLE
 
-        if not (subd.show_in_editmode and subd.show_viewport):
+        if not (subds[0].show_in_editmode and subds[0].show_viewport):
             if toggle_type in ['TOGGLE', 'ENABLE']:
-                subd.show_in_editmode = True
-                subd.show_viewport = True
 
                 # enable face smoothing if necessary
                 if not bm.faces[0].smooth:
@@ -108,6 +105,10 @@ class ToggleSmooth(bpy.types.Operator):
 
                     obj.M3.has_smoothed = True
 
+                for subd in subds:
+                    subd.show_in_editmode = True
+                    subd.show_viewport = True
+
                 # disable overlays, prevent doing it multiple times when batch smoothing
                 if self.toggle_subd_overlays and toggle_type == 'TOGGLE':
                     overlay.show_overlays = False
@@ -118,8 +119,6 @@ class ToggleSmooth(bpy.types.Operator):
 
         else:
             if toggle_type in ['TOGGLE', 'DISABLE']:
-                subd.show_in_editmode = False
-                subd.show_viewport = False
 
                 # disable face smoothing if it was enabled before
                 if obj.M3.has_smoothed:
@@ -134,6 +133,11 @@ class ToggleSmooth(bpy.types.Operator):
                         bm.free()
 
                     obj.M3.has_smoothed = False
+
+
+                for subd in subds:
+                    subd.show_in_editmode = False
+                    subd.show_viewport = False
 
                 # re-enable overlays, prevent doing it multiple times when batch smoothing
                 if toggle_type == 'TOGGLE':

@@ -45,8 +45,9 @@ def clean_up_groups(context):
 
         # remove empty groups
         if obj.M3.is_group_empty and not obj.children:
-            print("INFO: Removing empty Group", obj.name)
-            bpy.data.objects.remove(obj, do_unlink=True)
+            if r.get_prefs().group_remove_empty:
+                print("INFO: Removing empty Group", obj.name)
+                bpy.data.objects.remove(obj, do_unlink=True)
 
         elif obj.M3.is_group_object:
             if obj.parent:
@@ -54,16 +55,16 @@ def clean_up_groups(context):
                 # group objects whose parent is not a group empty are no longer group objects
                 if not obj.parent.M3.is_group_empty:
                     obj.M3.is_group_object = False
-                    print(f"INFO: {obj.name} is no longer a group object, because it's parent {obj.parent.name} is not a group empty", obj.name)
+                    print(f"INFO: {obj.name} is no longer a group object, because it's parent {obj.parent.name} is not a group empty")
 
             # and neither are group objects without any parent
             else:
                 obj.M3.is_group_object = False
-                print(f"INFO: {obj.name} is no longer a group object, because it doesn't have any parent", obj.name)
+                print(f"INFO: {obj.name} is no longer a group object, because it doesn't have any parent")
 
         elif not obj.M3.is_group_object and obj.parent and obj.parent.M3.is_group_empty:
             obj.M3.is_group_object = True
-            print(f"INFO: {obj.name} is now a group object, because it was manually parented to {obj.parent.name}", obj.name)
+            print(f"INFO: {obj.name} is now a group object, because it was manually parented to {obj.parent.name}")
 
 
 # CONTEXT
@@ -151,15 +152,23 @@ def get_group_matrix(context, objects, location_type='AVERAGE', rotation_type='W
 # HIERARCHY
 
 def select_group_children(view_layer, empty, recursive=False):
+    '''
+    note, that we only actually select objects and empties that are visible
+    they might not be visible when you are in local view, focusing on some of the group's objects
+    '''
+
     children = [c for c in empty.children if c.M3.is_group_object and c.name in view_layer.objects]
 
     # unhide any hidden group emtpies you may encounter
     if empty.hide_get():
         empty.hide_set(False)
-        empty.select_set(True)
+
+        if empty.visible_get(view_layer=view_layer):
+            empty.select_set(True)
 
     for obj in children:
-        obj.select_set(True)
+        if obj.visible_get(view_layer=view_layer):
+            obj.select_set(True)
 
         if obj.M3.is_group_empty and recursive:
             select_group_children(view_layer, obj, recursive=True)

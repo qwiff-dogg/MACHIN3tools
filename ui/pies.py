@@ -5,8 +5,9 @@ import importlib
 from .. utils.registration import get_prefs, get_addon
 from .. utils.ui import get_icon
 from .. utils.collection import get_scene_collections
-from .. utils.system import abspath
+from .. utils.system import abspath, get_temp_dir
 from .. utils.tools import get_tools_from_context, get_active_tool
+from .. utils.light import get_area_light_poll
 
 
 # TODO: snapping pie
@@ -24,7 +25,10 @@ hardops = None
 hypercursor = None
 hypercursorlast = None
 
+wavefront_addon = None
 
+
+# MODES
 
 class PieModes(Menu):
     bl_idname = "MACHIN3_MT_modes_pie"
@@ -34,18 +38,17 @@ class PieModes(Menu):
         layout = self.layout
         toolsettings = context.tool_settings
 
-        global decalmachine
-
-        if decalmachine is None:
-            decalmachine, _, _, _ = get_addon("DECALmachine")
-
-
         active = context.active_object
+
+        global hypercursor
+
+        if hypercursor is None:
+            hypercursor = get_addon("HyperCursor")[0]
 
         pie = layout.menu_pie()
 
         if active:
-            if context.mode in ['OBJECT', 'EDIT_MESH', 'EDIT_ARMATURE', 'POSE', 'EDIT_CURVE', 'EDIT_TEXT', 'EDIT_SURFACE', 'EDIT_METABALL', 'EDIT_LATTICE', 'EDIT_GPENCIL', 'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL']:
+            if context.mode in ['OBJECT', 'EDIT_MESH', 'EDIT_ARMATURE', 'POSE', 'EDIT_CURVE', 'EDIT_TEXT', 'EDIT_SURFACE', 'EDIT_METABALL', 'EDIT_LATTICE', 'EDIT_GPENCIL', 'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'SCULPT_CURVES']:
                 if active.type == 'MESH':
                     if context.area.type == "VIEW_3D":
 
@@ -59,13 +62,16 @@ class PieModes(Menu):
 
                         else:
                             # 4 - LEFT
-                            pie.operator("machin3.mesh_mode", text="Vertex", icon_value=get_icon('vertex')).mode = 'VERT'
+                            depress = active.mode == 'EDIT' and context.scene.tool_settings.mesh_select_mode[0]
+                            pie.operator("machin3.mesh_mode", text="Vertex", depress=depress, icon_value=get_icon('vertex')).mode = 'VERT'
 
                             # 6 - RIGHT
-                            pie.operator("machin3.mesh_mode", text="Face", icon_value=get_icon('face')).mode = 'FACE'
+                            depress = active.mode == 'EDIT' and context.scene.tool_settings.mesh_select_mode[2]
+                            pie.operator("machin3.mesh_mode", text="Face", depress=depress, icon_value=get_icon('face')).mode = 'FACE'
 
                             # 2 - BOTTOM
-                            pie.operator("machin3.mesh_mode", text="Edge", icon_value=get_icon('edge')).mode = 'EDGE'
+                            depress = active.mode == 'EDIT' and context.scene.tool_settings.mesh_select_mode[1]
+                            pie.operator("machin3.mesh_mode", text="Edge", depress=depress, icon_value=get_icon('edge')).mode = 'EDGE'
 
                             # 8 - TOP
                             text, icon = ("Edit", get_icon('edit_mesh')) if active.mode == "OBJECT" else ("Object", get_icon('object'))
@@ -75,7 +81,22 @@ class PieModes(Menu):
                             self.draw_mesh_modes(context, pie)
 
                             # 9 - TOP - RIGHT
-                            pie.separator()
+                            if context.mode == 'EDIT_MESH' and hypercursor:
+                                box = pie.split()
+                                column = box.column()
+
+                                row = column.row(align=True)
+                                row.scale_y = 1.2
+
+                                row.label(text="Gizmos")
+
+                                row.operator("machin3.toggle_gizmo_data_layer_preview", text="Preview", depress=active.HC.show_geometry_gizmo_previews)
+
+                                if tuple(bpy.context.scene.tool_settings.mesh_select_mode) in [(False, True, False), (False, False, True)]:
+                                    row.operator("machin3.toggle_gizmo", text="Toggle")
+
+                            else:
+                                pie.separator()
 
                             # 1 - BOTTOM - LEFT
                             if get_prefs().activate_surface_slide:
@@ -230,6 +251,56 @@ class PieModes(Menu):
                     else:
                         pie.separator()
 
+                elif active.type == 'CURVES':
+
+                    # 4 - LEFT
+                    pie.separator()
+
+                    # 6 - RIGHT
+                    pie.separator()
+
+                    # 2 - BOTTOM
+                    pie.separator()
+
+                    # 8 - TOP
+                    pie.separator()
+
+                    # 7 - TOP - LEFT
+                    self.draw_hair_modes(context, pie)
+
+                    # 9 - TOP - RIGHT
+                    if context.mode == 'SCULPT_CURVES':
+                        box = pie.split()
+                        column = box.column()
+                        column.scale_y = 1.5
+                        column.scale_x = 1.5
+
+                        row = column.row(align=True)
+
+                        # Combine the "use selection" toggle with the "set domain" operators
+                        # to allow turning selection off directly.
+                        domain = active.data.selection_domain
+
+                        if domain == 'POINT':
+                            row.prop(active.data, "use_sculpt_selection", text="", icon='CURVE_BEZCIRCLE')
+                        else:
+                            row.operator("curves.set_selection_domain", text="", icon='CURVE_BEZCIRCLE').domain = 'POINT'
+
+                        if domain == 'CURVE':
+                            row.prop(active.data, "use_sculpt_selection", text="", icon='CURVE_PATH')
+                        else:
+                            row.operator("curves.set_selection_domain", text="", icon='CURVE_PATH').domain = 'CURVE'
+
+                    else:
+                        pie.separator()
+
+                    # 1 - BOTTOM - LEFT
+                    pie.separator()
+
+                    # 3 - BOTTOM - RIGHT
+                    pie.separator()
+
+
                 elif active.type == 'GPENCIL':
                     gpd = context.gpencil_data
 
@@ -275,9 +346,7 @@ class PieModes(Menu):
                     elif context.mode == "EDIT_GPENCIL":
                         row = column.row(align=True)
                         row.prop(toolsettings, "gpencil_selectmode_edit", text="", expand=True)
-
-                        if bpy.app.version >= (2, 92, 0):
-                            row.prop(active.data, "use_curve_edit", text="", icon='IPO_BEZIER')
+                        row.prop(active.data, "use_curve_edit", text="", icon='IPO_BEZIER')
 
 
                     # 3 - BOTTOM - RIGHT
@@ -309,20 +378,49 @@ class PieModes(Menu):
                         r.popover(panel="VIEW3D_PT_gpencil_multi_frame", text="Multiframe")
 
                 elif active.type == 'EMPTY':
-                    # 4 - LEFT
-                    if active.instance_collection and active.instance_collection.library:
-                        blendpath = abspath(active.instance_collection.library.filepath)
-                        library = active.instance_collection.library.name
 
-                        op = pie.operator("machin3.open_library_blend", text="Open %s" % (os.path.basename(blendpath)))
-                        op.blendpath = blendpath
-                        op.library = library
+                    if get_prefs().activate_assetbrowser_tools and get_prefs().show_instance_collection_assembly_in_modes_pie:
+
+                        # 4 - LEFT
+
+                        if active.instance_collection and active.instance_type == 'COLLECTION':
+                            pie.operator("machin3.assemble_instance_collection", text="Assemble Instance Collection")
+
+                        else:
+                            pie.separator()
+
+                        # 6 - RIGHT
+
+                        if active.instance_collection and active.instance_type == 'COLLECTION' and active.instance_collection.library:
+                            blendpath = abspath(active.instance_collection.library.filepath)
+                            library = active.instance_collection.library.name
+
+                            op = pie.operator("machin3.open_library_blend", text=f"Open {os.path.basename(blendpath)} Library")
+                            op.blendpath = blendpath
+                            op.library = library
+
+                        else:
+                            pie.separator()
 
                     else:
+
+                        # 4 - LEFT
+
+                        if active.instance_collection and active.instance_type == 'COLLECTION' and active.instance_collection.library:
+                            blendpath = abspath(active.instance_collection.library.filepath)
+                            library = active.instance_collection.library.name
+
+                            op = pie.operator("machin3.open_library_blend", text=f"Open {os.path.basename(blendpath)} Library")
+                            op.blendpath = blendpath
+                            op.library = library
+
+                        else:
+                            pie.separator()
+
+                        # 6 - RIGHT
+
                         pie.separator()
 
-                    # 6 - RIGHT
-                    pie.separator()
 
                     # 2 - BOTTOM
                     pie.separator()
@@ -462,6 +560,38 @@ class PieModes(Menu):
                     # 3 - BOTTOM - RIGHT
                     pie.separator()
 
+            elif context.mode == "PARTICLE":
+                    # 4 - LEFT
+                    pie.separator()
+
+                    # 6 - RIGHT
+                    pie.separator()
+
+                    # 2 - BOTTOM
+                    pie.separator()
+
+                    # 8 - TOP
+                    pie.separator()
+
+                    # 7 - TOP - LEFT
+                    self.draw_mesh_modes(context, pie)
+
+                    # 9 - TOP - RIGHT
+                    box = pie.split()
+                    column = box.column()
+                    column.scale_y = 1.5
+                    column.scale_x = 1.5
+
+                    row = column.row(align=True)
+                    row.prop(toolsettings.particle_edit, "select_mode", text="", expand=True)
+
+                    # 1 - BOTTOM - LEFT
+                    pie.separator()
+
+                    # 3 - BOTTOM - RIGHT
+                    pie.separator()
+
+
         # no active object
         else:
             # 4 - LEFT
@@ -532,7 +662,6 @@ class PieModes(Menu):
             row = column.row(align=True)
             row.prop(thickness[0], 'thickness_factor', text='Thickness')
 
-
     def draw_mesh_modes(self, context, pie):
         box = pie.split()
         column = box.column()
@@ -544,6 +673,11 @@ class PieModes(Menu):
         r = row.row(align=True)
         r.active = False if context.mode == 'PAINT_GPENCIL' else True
         r.operator("machin3.surface_draw_mode", text="", icon="GREASEPENCIL")
+
+        if context.active_object.particle_systems:
+            r = row.row(align=True)
+            r.active = False if context.mode == 'TEXTURE_PAINT' else True
+            r.operator("object.mode_set", text="", icon="PARTICLEMODE").mode = 'PARTICLE_EDIT'
 
         r = row.row(align=True)
         r.active = False if context.mode == 'TEXTURE_PAINT' else True
@@ -569,6 +703,24 @@ class PieModes(Menu):
         r.active = False if context.mode == 'EDIT_MESH' else True
         r.operator("object.mode_set", text="", icon="EDITMODE_HLT").mode = 'EDIT'
 
+    def draw_hair_modes(self, context, pie):
+        box = pie.split()
+        column = box.column()
+        column.scale_y = 1.5
+        column.scale_x = 1.5
+
+        row = column.row(align=True)
+
+        r = row.row(align=True)
+        r.active = False if context.mode == 'SCULPT_CURVES' else True
+        r.operator("object.mode_set", text="", icon="SCULPTMODE_HLT").mode = 'SCULPT_CURVES'
+
+        r = row.row(align=True)
+        r.active = False if context.mode == 'OBJECT' else True
+        r.operator("object.mode_set", text="", icon="OBJECT_DATA").mode = 'OBJECT'
+
+
+# SAVE
 
 class PieSave(Menu):
     bl_idname = "MACHIN3_MT_save_pie"
@@ -578,6 +730,12 @@ class PieSave(Menu):
         layout = self.layout
         pie = layout.menu_pie()
 
+        scene = context.scene
+        wm = context.window_manager
+
+        # check if current file is in temp dir
+        is_in_temp_dir = bpy.data.filepath and get_temp_dir(context) == os.path.dirname(bpy.data.filepath)
+
         # 4 - LEFT
         pie.operator("wm.open_mainfile", text="Open...", icon_value=get_icon('open'))
 
@@ -585,14 +743,15 @@ class PieSave(Menu):
         pie.operator("machin3.save", text="Save", icon_value=get_icon('save'))
 
         # 2 - BOTTOM
-        pie.operator("wm.save_as_mainfile", text="Save As..", icon_value=get_icon('save_as'))
+        # pie.operator("wm.save_as_mainfile", text="Save As..", icon_value=get_icon('save_as'))
+        pie.operator("machin3.save_as", text="Save As..", icon_value=get_icon('save_as'))
 
         # 8 - TOP
         box = pie.split()
         # box = pie.box().split()
 
         b = box.box()
-        self.draw_left_column(b)
+        self.draw_left_column(wm, scene, b)
 
         column = box.column()
         b = column.box()
@@ -600,7 +759,7 @@ class PieSave(Menu):
 
         if bpy.data.filepath:
             b = column.box()
-            self.draw_center_column_bottom(b)
+            self.draw_center_column_bottom(b, is_in_temp_dir=is_in_temp_dir)
 
         b = box.box()
         self.draw_right_column(b)
@@ -617,9 +776,8 @@ class PieSave(Menu):
         # 3 - BOTTOM - RIGHT
         pie.operator("machin3.save_incremental", text="Incremental Save", icon_value=get_icon('save_incremental'))
 
-    def draw_left_column(self, layout):
+    def draw_left_column(self, wm, scene, layout):
         column = layout.column(align=True)
-
         column.scale_x = 1.1
 
         row = column.row(align=True)
@@ -629,32 +787,124 @@ class PieSave(Menu):
         row.operator("wm.call_menu", text="All Recent", icon_value=get_icon('open_recent')).name = "TOPBAR_MT_file_open_recent"
 
         column.separator()
-        column.operator("wm.recover_auto_save", text="Recover Auto Save...", icon_value=get_icon('recover_auto_save'))
+
+        if get_prefs().save_pie_use_undo_save:
+            row = column.row(align=True)
+            row.prop(scene.M3, "use_undo_save", text="Undo Save", icon='LOOP_BACK')
+
+            r = row.row(align=True)
+            r.active = scene.M3.use_undo_save
+            r.prop(scene.M3, "use_redo_save", text="Redo Save", icon='FILE_REFRESH')
+
+        row = column.row(align=True)
+        row.scale_y = 1.2
+        row.operator("machin3.open_temp_dir", text="Open Temp Dir", icon_value=get_icon('recover_auto_save'))
+
         # col.operator("wm.recover_last_session", text="Recover Last Session", icon='RECOVER_LAST')
         column.operator("wm.revert_mainfile", text="Revert", icon_value=get_icon('revert'))
 
-        column.separator()
-        column.operator("machin3.clean_out_blend_file", text="Clean out .blend", icon_value=get_icon('error'))
+        if get_prefs().show_screencast:
+            column.separator()
 
+            screencast = getattr(wm, 'M3_screen_cast', False)
+            text, icon = ('Disable', 'PAUSE') if screencast else ('Enable', 'PLAY')
+
+            column.operator('machin3.screen_cast', text=f"{text} Screen Cast", depress=screencast, icon=icon)
 
     def draw_center_column_top(self, context, layout):
+        global wavefront_addon
+
+        # check if wavefront addon is used, or if the new native, but experimental exporter is used
+        if bpy.app.version <= (4, 0, 0) and wavefront_addon is None:
+            wavefront_addon = get_addon('Wavefront OBJ format')[0]
+
         column = layout.column(align=True)
 
-        row = column.split(factor=0.25, align=True)
-        row.label(text="OBJ")
-        r = row.row(align=True)
-        r.operator("import_scene.obj", text="Import", icon_value=get_icon('import'))
-        r.operator("export_scene.obj", text="Export", icon_value=get_icon('export')).use_selection = True if context.selected_objects else False
 
-        row = column.split(factor=0.25, align=True)
-        row.label(text="FBX")
-        r = row.row(align=True)
-        r.operator("import_scene.fbx", text="Import", icon_value=get_icon('import'))
-        op = r.operator("export_scene.fbx", text="Export", icon_value=get_icon('export'))
-        op.use_selection = True if context.selected_objects else False
-        op.apply_scale_options='FBX_SCALE_ALL'
+        #  .obj
 
-    def draw_center_column_bottom(self, layout):
+        if get_prefs().save_pie_show_obj_export:
+            row = column.split(factor=0.25, align=True)
+            row.label(text="OBJ")
+            r = row.row(align=True)
+
+            if wavefront_addon:
+                r.operator("import_scene.obj", text="Import", icon_value=get_icon('import'))
+                r.operator("export_scene.obj", text="Export", icon_value=get_icon('export')).use_selection = True if context.selected_objects else False
+            else:
+                r.operator("wm.obj_import", text="Import", icon_value=get_icon('import'))
+                r.operator("wm.obj_export", text="Export", icon_value=get_icon('export')).export_selected_objects = True if context.selected_objects else False
+
+
+        #  Plasticity .obj
+
+        if get_prefs().save_pie_show_plasticity_export:
+            row = column.split(factor=0.25, align=True)
+            row.label(text="Plasticity")
+            r = row.row(align=True)
+
+            if wavefront_addon:
+                op = r.operator("import_scene.obj", text="Import", icon_value=get_icon('import'))
+                op.up_axis = 'Z'
+                op.forward_axis = 'Y'
+
+                op = r.operator("export_scene.obj", text="Export", icon_value=get_icon('export')).use_selection = True if context.selected_objects else False
+                op.use_selection = True if context.selected_objects else False
+                op.up_axis = 'Z'
+                op.forward_axis = 'Y'
+
+            else:
+                op = r.operator("wm.obj_import", text="Import", icon_value=get_icon('import'))
+                op.up_axis = 'Z'
+                op.forward_axis = 'Y'
+
+                op = r.operator("wm.obj_export", text="Export", icon_value=get_icon('export'))
+                op.export_selected_objects = True if context.selected_objects else False
+                op.up_axis = 'Z'
+                op.forward_axis = 'Y'
+
+
+        #  .fbx
+
+        if get_prefs().save_pie_show_fbx_export:
+            row = column.split(factor=0.25, align=True)
+            row.label(text="FBX")
+            r = row.row(align=True)
+            r.operator("import_scene.fbx", text="Import", icon_value=get_icon('import'))
+
+            op = r.operator("export_scene.fbx", text="Export", icon_value=get_icon('export'))
+            op.use_selection = True if context.selected_objects else False
+
+            if get_prefs().fbx_export_apply_scale_all:
+                op.apply_scale_options='FBX_SCALE_ALL'
+
+
+        # .usd
+
+        if get_prefs().save_pie_show_usd_export:
+            row = column.split(factor=0.25, align=True)
+            row.label(text="USD")
+            r = row.row(align=True)
+            r.operator("wm.usd_import", text="Import", icon_value=get_icon('import'))
+
+            op = r.operator("wm.usd_export", text="Export", icon_value=get_icon('export'))
+            op.selected_objects_only = True if context.selected_objects else False
+
+
+        #  .stl
+
+        if get_prefs().save_pie_show_stl_export:
+            row = column.split(factor=0.25, align=True)
+            row.label(text="STL")
+            r = row.row(align=True)
+            r.operator("import_mesh.stl", text="Import", icon_value=get_icon('import'))
+
+            op = r.operator("export_mesh.stl", text="Export", icon_value=get_icon('export'))
+            op.use_selection = True if context.selected_objects else False
+
+
+
+    def draw_center_column_bottom(self, layout, is_in_temp_dir=False):
         column = layout.column(align=True)
 
         row = column.split(factor=0.5, align=True)
@@ -662,38 +912,36 @@ class PieSave(Menu):
         row.operator("machin3.load_previous", text="Previous", icon_value=get_icon('open_previous'))
         row.operator("machin3.load_next", text="Next", icon_value=get_icon('open_next'))
 
+        if is_in_temp_dir:
+            column = layout.column(align=True)
+            column.label(text="You are currently in the Temp Folder", icon_value=get_icon('warning'))
+            column.label(text="If you want to save, do it elsewhere!", icon='BLANK1')
+
     def draw_right_column(self, layout):
         column = layout.column(align=True)
 
-        row = column.row()
+        row = column.row(align=True)
         r = row.row(align=True)
         r.operator("wm.append", text="Append", icon_value=get_icon('append'))
         r.operator("wm.link", text="Link", icon_value=get_icon('link'))
+
+        row.separator()
 
         r = row.row(align=True)
         r.operator("wm.call_menu", text='', icon_value=get_icon('external_data')).name = "TOPBAR_MT_file_external_data"
         r.operator("machin3.purge_orphans", text="Purge")
 
-        # append world and materials
-
-        appendworldpath = get_prefs().appendworldpath
-        appendmatspath = get_prefs().appendmatspath
-
-        if any([appendworldpath, appendmatspath]):
+        if get_prefs().activate_assetbrowser_tools and get_prefs().show_assembly_asset_creation_in_save_pie:
             column.separator()
+            row = column.row()
+            row.scale_y = 1.2
+            row.operator("machin3.create_assembly_asset", text="Create Assembly Asset", icon='ASSET_MANAGER')
 
-            if appendworldpath:
-                row = column.split(factor=0.8, align=True)
-                row.scale_y = 1.2
-                row.operator("machin3.append_world", text="World", icon_value=get_icon('world'))
-                row.operator("machin3.load_world_source", text="", icon_value=get_icon('open_world'))
+        column.separator()
+        column.operator("machin3.clean_out_blend_file", text="Clean out .blend", icon_value=get_icon('error'))
 
-            if appendmatspath:
-                row = column.split(factor=0.8, align=True)
-                row.scale_y = 1.2
-                row.operator("wm.call_menu", text="Material", icon_value=get_icon('material')).name = "MACHIN3_MT_append_materials"
-                row.operator("machin3.load_materials_source", text="", icon_value=get_icon('open_material'))
 
+# SHADING
 
 class PieShading(Menu):
     bl_idname = "MACHIN3_MT_shading_pie"
@@ -710,13 +958,15 @@ class PieShading(Menu):
 
         pie = layout.menu_pie()
 
+        m3 = context.scene.M3
+
         # 4 - LEFT
         text, icon = self.get_text_icon(context, "SOLID")
-        pie.operator("machin3.shade_solid", text=text, icon=icon, depress=shading.type == 'SOLID' and overlay.show_overlays)
+        pie.operator("machin3.switch_shading", text=text, icon=icon, depress=shading.type == 'SOLID' and overlay.show_overlays).shading_type = 'SOLID'
 
         # 6 - RIGHT
         text, icon = self.get_text_icon(context, "MATERIAL")
-        pie.operator("machin3.shade_material", text=text, icon=icon, depress=shading.type == 'MATERIAL' and overlay.show_overlays)
+        pie.operator("machin3.switch_shading", text=text, icon=icon, depress=shading.type == 'MATERIAL' and overlay.show_overlays).shading_type = 'MATERIAL'
 
         # 2 - BOTTOM
         pie.separator()
@@ -747,13 +997,19 @@ class PieShading(Menu):
         b = box.box()
         self.draw_shade_box(context, view, b)
 
-        if view.shading.type == "MATERIAL" or (view.shading.type == 'RENDERED' and context.scene.render.engine == 'BLENDER_EEVEE'):
-            b = box.box()
-            self.draw_eevee_box(context, view, b)
 
-        elif view.shading.type == 'RENDERED' and context.scene.render.engine == 'CYCLES':
+        if view.shading.type in ["MATERIAL", 'RENDERED']:
             b = box.box()
-            self.draw_cycles_box(context, view, b)
+
+            if view.shading.type == 'MATERIAL' or view.shading.type == 'RENDERED' and context.scene.render.engine == 'BLENDER_EEVEE':
+                self.draw_eevee_box(context, view, b)
+
+            elif view.shading.type == 'RENDERED' and context.scene.render.engine == 'CYCLES':
+                self.draw_cycles_box(context, view, b)
+
+            if get_prefs().activate_render and get_prefs().render_adjust_lights_on_render and get_area_light_poll():
+                self.draw_light_adjust_box(context, m3, b)
+
 
         # 7 - TOP - LEFT
         pie.separator()
@@ -763,22 +1019,22 @@ class PieShading(Menu):
 
         # 1 - BOTTOM - LEFT
         text, icon = self.get_text_icon(context, "WIREFRAME")
-        pie.operator("machin3.shade_wire", text=text, icon=icon, depress=shading.type == 'WIREFRAME' and overlay.show_overlays)
+        pie.operator("machin3.switch_shading", text=text, icon=icon, depress=shading.type == 'WIREFRAME' and overlay.show_overlays).shading_type = 'WIREFRAME'
 
         # 3 - BOTTOM - RIGHT
         text, icon = self.get_text_icon(context, "RENDERED")
-        pie.operator("machin3.shade_rendered", text=text, icon=icon, depress=shading.type == 'RENDERED' and overlay.show_overlays)
+        pie.operator("machin3.switch_shading", text=text, icon=icon, depress=shading.type == 'RENDERED' and overlay.show_overlays).shading_type = 'RENDERED'
 
     def draw_overlay_box(self, context, active, view, layout):
+        m3 = context.scene.M3
+
         overlay = context.space_data.overlay
         perspective_type = view.region_3d.view_perspective
 
         column = layout.column(align=True)
         row = column.row(align=True)
 
-        if bpy.app.version >= (2, 90, 0):
-            row.prop(view.overlay, "show_stats", text="Stats")
-
+        row.prop(view.overlay, "show_stats", text="Stats")
         row.prop(view.overlay, "show_cursor", text="Cursor")
         row.prop(view.overlay, "show_object_origins", text="Origins")
 
@@ -819,7 +1075,8 @@ class PieShading(Menu):
         r.prop(view.overlay, "show_axis_z", text="Z", toggle=True)
 
         row = column.split(factor=0.4, align=True)
-        row.operator("machin3.toggle_wireframe", text="Wireframe", icon_value=get_icon('wireframe'), depress=context.mode=='OBJECT' and overlay.show_wireframes)
+        icon = 'wireframe_xray' if m3.show_edit_mesh_wire else 'wireframe'
+        row.operator("machin3.toggle_wireframe", text="Wireframe", icon_value=get_icon(icon), depress=context.mode=='OBJECT' and overlay.show_wireframes)
 
         r = row.row(align=True)
         if context.mode == "OBJECT":
@@ -829,15 +1086,22 @@ class PieShading(Menu):
             r.active = view.shading.show_xray
             r.prop(view.shading, "xray_alpha", text="X-Ray")
 
-        # object axes
-        hasobjectaxes = True if bpy.app.driver_namespace.get('draw_object_axes') else False
+        # object and cursor axes
+        hasaxes = m3.draw_cursor_axes or m3.draw_active_axes or any([obj.M3.draw_axes for obj in context.visible_objects])
 
         row = column.split(factor=0.4, align=True)
-        row.operator("machin3.toggle_object_axes", text="(E) Object Axes", depress=hasobjectaxes)
+        rs = row.split(factor=0.5, align=True)
+        rs.prop(m3, "draw_active_axes", text="Active", icon='EMPTY_AXIS')
+        rs.prop(m3, "draw_cursor_axes", text="Cursor", icon='PIVOT_CURSOR')
+
         r = row.row(align=True)
-        r.active = hasobjectaxes
-        r.prop(context.scene.M3, "object_axes_size", text="")
-        r.prop(context.scene.M3, "object_axes_alpha", text="")
+        r.active = hasaxes
+        r.prop(m3, "draw_axes_screenspace", text="", icon='WORKSPACE')
+        r.prop(m3, "draw_axes_size", text="")
+        r.prop(m3, "draw_axes_alpha", text="")
+
+        # row = column.row()
+        # row.prop(m3, "draw_cursor_axes", text="Cursor's Axes", icon='EMPTY_AXIS')
 
     def draw_solid_box(self, context, view, layout):
         shading = context.space_data.shading
@@ -891,7 +1155,8 @@ class PieShading(Menu):
             if active.type == 'ARMATURE':
                 r.prop(active.data, "show_axes", text="Axes")
             else:
-                r.prop(active, "show_axis", text="Axis")
+                # r.prop(active, "show_axis", text="Axis")
+                r.prop(active.M3, "draw_axes", text="Axes")
 
             r = row.row()
             r.prop(active, "show_in_front", text="In Front")
@@ -918,15 +1183,15 @@ class PieShading(Menu):
                 row.prop(active, "show_in_front", text="In Front")
 
 
-
         if active.type == "MESH":
             mesh = active.data
+            angles = [int(a) for a in get_prefs().auto_smooth_angle_presets.split(',')]
 
             column.separator()
             row = column.split(factor=0.55, align=True)
             r = row.row(align=True)
-            r.operator("machin3.shade_smooth", text="Smooth", icon_value=get_icon('smooth'))
-            r.operator("machin3.shade_flat", text="Flat", icon_value=get_icon('flat'))
+            r.operator("machin3.shade", text="Smooth", icon_value=get_icon('smooth')).mode = 'SMOOTH'
+            r.operator("machin3.shade", text="Flat", icon_value=get_icon('flat')).mode = 'FLAT'
 
             icon = "CHECKBOX_HLT" if mesh.use_auto_smooth else "CHECKBOX_DEHLT"
             row.operator("machin3.toggle_auto_smooth", text="AutoSmooth", icon=icon).angle = 0
@@ -934,7 +1199,8 @@ class PieShading(Menu):
             row = column.split(factor=0.55, align=True)
             r = row.row(align=True)
             r.active = not mesh.has_custom_normals
-            for angle in [30, 60, 90, 180]:
+
+            for angle in angles:
                 r.operator("machin3.toggle_auto_smooth", text=str(angle)).angle = angle
 
             r = row.row(align=True)
@@ -960,9 +1226,9 @@ class PieShading(Menu):
 
                 row = column.split(factor=0.2, align=True)
                 row.label(text='Edges')
-                row.prop(view.overlay, "show_edge_crease", text="Creases", toggle=True)
                 row.prop(view.overlay, "show_edge_sharp", text="Sharp", toggle=True)
                 row.prop(view.overlay, "show_edge_bevel_weight", text="Bevel", toggle=True)
+                row.prop(view.overlay, "show_edge_crease", text="Creases", toggle=True)
                 row.prop(view.overlay, "show_edge_seams", text="Seams", toggle=True)
                 # row.prop(view.overlay, "show_freestyle_edge_marks", text="Freestyle", toggle=True)
 
@@ -989,14 +1255,13 @@ class PieShading(Menu):
             if active.mode == 'EDIT' and view.overlay.show_overlays:
                 column.separator()
 
-                if bpy.app.version >= (2, 90, 0):
-                    splines = curve.splines
-                    if splines:
-                        spline = curve.splines[0]
-                        if spline.type == 'BEZIER':
-                            row = column.split(factor=0.2, align=True)
-                            row.label(text='Handles')
-                            row.prop(view.overlay, "display_handle", text="")
+                splines = curve.splines
+                if splines:
+                    spline = curve.splines[0]
+                    if spline.type == 'BEZIER':
+                        row = column.split(factor=0.2, align=True)
+                        row.label(text='Handles')
+                        row.prop(view.overlay, "display_handle", text="")
 
                 row = column.split(factor=0.2, align=True)
                 row.label(text='Normals')
@@ -1007,8 +1272,13 @@ class PieShading(Menu):
                 rr.active = view.overlay.show_curve_normals
                 rr.prop(view.overlay, "normals_length", text="Length")
 
+            column.separator()
+            row = column.split(factor=0.5, align=True)
+            row.operator("machin3.shade", text="Smooth", icon_value=get_icon('smooth')).mode = 'SMOOTH'
+            row.operator("machin3.shade", text="Flat", icon_value=get_icon('flat')).mode = 'FLAT'
+
     def draw_shade_box(self, context, view, layout):
-        column = layout.column(align=True)
+        column = layout.column(align=True) 
 
         # SOLID
 
@@ -1017,7 +1287,9 @@ class PieShading(Menu):
             # light type
             row = column.row(align=True)
             # row.scale_y = 1.5
-            row.prop(view.shading, "light", expand=True)
+            # row.prop(view.shading, "light", expand=True)
+            row.prop(context.scene.M3, "shading_light", expand=True)
+
 
             # studio / matcap selection
             if view.shading.light in ["STUDIO", "MATCAP"]:
@@ -1032,11 +1304,36 @@ class PieShading(Menu):
                 r.active = view.shading.use_world_space_lighting
                 r.prop(view.shading, "studiolight_rotate_z", text="Rotation")
 
-            # switch matcap
-            if view.shading.light == "MATCAP":
+            # matcap ops
+            elif view.shading.light == "MATCAP":
                 row = column.row(align=True)
                 row.operator("machin3.matcap_switch", text="(X) Matcap Switch")
                 row.operator('view3d.toggle_matcap_flip', text="Matcap Flip", icon='ARROW_LEFTRIGHT')
+
+            # flat shadow settings
+            elif view.shading.light == "FLAT":
+
+                if context.scene.M3.use_flat_shadows:
+                    row = column.split(factor=0.6, align=True)
+
+                    col = row.column(align=True)
+                    r = col.row(align=True)
+                    r.scale_y = 1.25
+                    r.prop(context.scene.M3, "use_flat_shadows")
+
+                    c = col.column(align=True)
+                    c.active = context.scene.M3.use_flat_shadows
+                    c.prop(context.scene.display, "shadow_shift")
+                    c.prop(context.scene.display, "shadow_focus")
+
+                    r = row.row(align=True)
+                    r.prop(context.scene.display, "light_direction", text="")
+
+                else:
+                    row = column.row(align=True)
+                    row.scale_y = 1.25
+                    row.prop(context.scene.M3, "use_flat_shadows")
+
 
             # color type
             row = column.row(align=True)
@@ -1152,14 +1449,52 @@ class PieShading(Menu):
                                             row.prop(color, "default_value", text="")
 
             if view.shading.type == 'RENDERED':
-                column.prop(context.scene.render, 'film_transparent')
+                enforce_hide_render = get_prefs().activate_render and get_prefs().render_enforce_hide_render
+
+                if enforce_hide_render:
+                    row = column.split(factor=0.5, align=True)
+                else:
+                    row = column.row(align=True)
+
+                row.prop(context.scene.render, 'film_transparent')
+
+                if enforce_hide_render:
+                    row.prop(context.scene.M3, 'enforce_hide_render', text="Enforce hide_render")
 
     def draw_eevee_box(self, context, view, layout):
         column = layout.column(align=True)
 
-        row = column.row(align=True)
-        row.label(text='Eevee Settings')
+        # EEVEE PRESETS
+
+        split = column.split(factor=0.3, align=True)
+
+        row = split.row(align=True)
+        row.label(text='Presets')
+        row.prop(context.scene.M3, "eevee_preset_set_use_scene_lights", text='', icon='LIGHT_SUN')
+        row.prop(context.scene.M3, "eevee_preset_set_use_scene_world", text='', icon='WORLD')
+
+        row = split.row(align=True)
         row.prop(context.scene.M3, "eevee_preset", expand=True)
+
+
+        #  RENDER PASSES
+
+        row = column.split(factor=0.3, align=True)
+        row.label(text='Passes')
+        row.prop(view.shading, "render_pass", text='')
+
+
+        # VIEWPORT COMPOSITING
+
+        if bpy.app.version >= (3, 5, 0):
+
+            row = column.split(factor=0.3, align=True)
+            row.label(text='Compositor')
+
+            # NOTE: the native prop doesn't support expand for some reason, not in a pie at least, odd
+            # row.prop(view.shading, "use_compositor", text='', expand=True)
+            row.prop(context.scene.M3, "use_compositor", expand=True)
+
 
         # SSR
 
@@ -1228,19 +1563,89 @@ class PieShading(Menu):
                 row.prop(context.scene.eevee, "volumetric_shadow_samples", text='Samples')
 
     def draw_cycles_box(self, context, view, layout):
+        cycles = context.scene.cycles
         column = layout.column(align=True)
 
-        row = column.split(factor=0.5, align=True)
+
+        # DEVICE
+
+        row = column.split(factor=0.3, align=True)
         row.label(text='Cycles Settings')
         row.prop(context.scene.M3, 'cycles_device', expand=True)
 
-        row = column.split(factor=0.5, align=True)
-        row.prop(context.scene.cycles, 'use_adaptive_sampling', text='Adaptive')
-        row.prop(context.scene.cycles, 'seed')
+
+        #  RENDER PASSES
+
+        row = column.split(factor=0.297, align=True)
+        row.label(text='Passes')
+        row.prop(view.shading.cycles, "render_pass", text='')
+
+
+        # VIEWPORT COMPOSITING
+
+        if bpy.app.version >= (3, 5, 0):
+
+            row = column.split(factor=0.31, align=True)
+            row.label(text='Compositor')
+            row.prop(context.scene.M3, "use_compositor", expand=True)
+
+
+        # DENOISE
+
+        row = column.split(factor=0.33, align=True)
+        row.prop(cycles, 'use_preview_denoising', text='Denoise')
+        row.prop(cycles, 'use_adaptive_sampling', text='Adaptive')
+        row.prop(cycles, 'seed')
+
+
+        # SAMPLES
 
         row = column.split(factor=0.5, align=True)
-        row.prop(context.scene.cycles, 'preview_samples', text='Viewport')
-        row.prop(context.scene.cycles, 'samples', text='Render')
+        row.prop(cycles, 'preview_samples', text='Viewport')
+        row.prop(cycles, 'samples', text='Render')
+
+
+        # FAST GI
+
+        row = column.split(factor=0.33, align=True)
+        row.prop(cycles, 'use_fast_gi', text='Fast GI')
+        row.prop(cycles, 'ao_bounces', text="Viewport")
+        row.prop(cycles, 'ao_bounces_render', text="Render")
+
+
+        # BEVEL SHADER
+
+        use_bevel_shader = get_prefs().activate_render and get_prefs().render_use_bevel_shader
+
+        if use_bevel_shader:
+            m3 = context.scene.M3
+            active = context.active_object if context.active_object and context.active_object.select_get() else None
+
+            column = layout.column(align=True)
+
+            split = column.split(factor=0.4, align=True)
+            split.prop(m3, 'use_bevel_shader')
+
+            row = split.row(align=True)
+            row.active = m3.use_bevel_shader
+            row.prop(m3, 'bevel_shader_use_dimensions', text="", icon='FULLSCREEN_ENTER')
+            row.prop(m3, 'bevel_shader_samples')
+            row.prop(m3, 'bevel_shader_radius')
+
+            if active:
+                row = column.row(align=True)
+                row.active = m3.use_bevel_shader
+                row.prop(active.M3, 'bevel_shader_radius_mod', text="Active Object Factor")
+
+
+    def draw_light_adjust_box(self, context, m3, layout):
+        column = layout.column(align=True)
+
+        row = column.row(align=True)
+        row.prop(m3, 'adjust_lights_on_render', text='Adjust Lights when Rendering')
+        r = row.row(align=True)
+        r.active = m3.adjust_lights_on_render
+        r.prop(m3, 'adjust_lights_on_render_divider', text='')
 
     def get_text_icon(self, context, shading):
         if context.space_data.shading.type == shading:
@@ -1262,6 +1667,8 @@ class PieShading(Menu):
 
         return text, icon
 
+
+# VIEWPORT
 
 class PieViewport(Menu):
     bl_idname = "MACHIN3_MT_viewport_pie"
@@ -1406,6 +1813,8 @@ class PieViewport(Menu):
 
         column.operator("machin3.reset_viewport", text='Reset Viewport')
 
+
+# ALIGN
 
 class PieAlign(Menu):
     bl_idname = "MACHIN3_MT_align_pie"
@@ -1805,6 +2214,8 @@ class PieUVAlign(Menu):
         op.axis = "V"
 
 
+# CURSOR and ORIGIN
+
 class PieCursor(Menu):
     bl_idname = "MACHIN3_MT_cursor_pie"
     bl_label = "Cursor and Origin"
@@ -1854,14 +2265,13 @@ class PieCursor(Menu):
 
                 row = column.split(factor=0.5, align=True)
                 row.scale_y = 1.5
+                row.operator("object.origin_set", text="to Geometry", icon="MESH_DATA").type = "ORIGIN_GEOMETRY"
                 row.operator("machin3.origin_to_cursor", text="to Cursor", icon="LAYER_ACTIVE")
-                row.operator("object.origin_set", text="to Geometry", icon="OBJECT_ORIGIN").type = "ORIGIN_GEOMETRY"
 
-                row = column.split(factor=0.20, align=True)
+                row = column.split(factor=0.5, align=True)
                 row.scale_y = 1.5
-                row.separator()
-                r = row.split(factor=0.7, align=True)
-                r.operator("machin3.origin_to_active", text="to Active", icon="TRANSFORM_ORIGINS")
+                row.operator("machin3.origin_to_active", text="to Active", icon="TRANSFORM_ORIGINS")
+                row.operator("machin3.origin_to_bottom_bounds", text="to Bottom", icon="AXIS_TOP")
 
             elif context.mode == 'EDIT_MESH':
                 row = column.split(factor=0.25)
@@ -1876,8 +2286,8 @@ class PieCursor(Menu):
 
                     row = column.row(align=True)
                     row.scale_y = 1.5
-                    row.operator("machin3.origin_to_cursor", text="to Cursor", icon='LAYER_ACTIVE')
                     row.operator("machin3.origin_to_active", text="to %s" % (sel), icon=icon)
+                    row.operator("machin3.origin_to_cursor", text="to Cursor", icon='LAYER_ACTIVE')
 
                 else:
 
@@ -1914,6 +2324,8 @@ class PieCursor(Menu):
         else:
             pie.separator()
 
+
+# TRANSFORM
 
 class PieTransform(Menu):
     bl_idname = "MACHIN3_MT_transform_pie"
@@ -2023,14 +2435,13 @@ class PieTransform(Menu):
 
 
         elif context.mode == 'EDIT_MESH':
-            if bpy.app.version >= (2, 90, 0):
-                column.label(text="Transform")
+            column.label(text="Transform")
 
-                column.prop(scene.tool_settings, "use_transform_correct_face_attributes")
+            column.prop(scene.tool_settings, "use_transform_correct_face_attributes")
 
-                row = column.row(align=True)
-                row.active = scene.tool_settings.use_transform_correct_face_attributes
-                row.prop(scene.tool_settings, "use_transform_correct_keep_connected")
+            row = column.row(align=True)
+            row.active = scene.tool_settings.use_transform_correct_face_attributes
+            row.prop(scene.tool_settings, "use_transform_correct_keep_connected")
 
             column.label(text="Mirror")
 
@@ -2044,6 +2455,9 @@ class PieTransform(Menu):
             row.prop(active.data, "use_mirror_topology", toggle=True)
 
 
+# SNAPPING
+
+
 class PieSnapping(Menu):
     bl_idname = "MACHIN3_MT_snapping_pie"
     bl_label = "Snapping"
@@ -2055,24 +2469,42 @@ class PieSnapping(Menu):
         scene = context.scene
         ts = scene.tool_settings
 
+        absolute_grid = get_prefs().snap_show_absolute_grid
+        volume = get_prefs().snap_show_volume
 
         # 4 - LEFT
-        op = pie.operator('machin3.set_snapping_preset', text='Vertex', depress=ts.snap_elements == {'VERTEX'} and ts.snap_target == 'CLOSEST' and not ts.use_snap_align_rotation)
+        op = pie.operator('machin3.set_snapping_preset', text='Vertex', depress=ts.snap_elements == {'VERTEX'} and ts.snap_target == 'CLOSEST' and not ts.use_snap_align_rotation, icon='SNAP_VERTEX')
         op.element = 'VERTEX'
         op.target = 'CLOSEST'
         op.align_rotation = False
 
         # 6 - RIGHT
-        op = pie.operator('machin3.set_snapping_preset', text='Surface', depress=ts.snap_elements == {'FACE'} and ts.snap_target == 'MEDIAN' and ts.use_snap_align_rotation)
-        op.element = 'FACE'
-        op.target = 'MEDIAN'
-        op.align_rotation = True
+        if absolute_grid or (absolute_grid and volume):
+            op = pie.operator('machin3.set_snapping_preset', text='Absolute Grid', depress=ts.snap_elements == {'INCREMENT'} and ts.use_snap_grid_absolute, icon='SNAP_GRID')
+            op.element = 'INCREMENT'
+
+        elif volume:
+            op = pie.operator('machin3.set_snapping_preset', text='Volume', depress=ts.snap_elements == {'VOLUME'}, icon='SNAP_VOLUME')
+            op.element = 'VOLUME'
+
+        else:
+            op = pie.operator('machin3.set_snapping_preset', text='Surface', depress=ts.snap_elements == {'FACE'} and ts.snap_target == 'MEDIAN' and ts.use_snap_align_rotation, icon='SNAP_FACE')
+            op.element = 'FACE'
+            op.target = 'MEDIAN'
+            op.align_rotation = True
 
         # 2 - BOTTOM
-        op = pie.operator('machin3.set_snapping_preset', text='Edge', depress=ts.snap_elements == {'EDGE'} and ts.snap_target == 'CLOSEST' and not ts.use_snap_align_rotation)
-        op.element = 'EDGE'
-        op.target = 'CLOSEST'
-        op.align_rotation = False
+        if absolute_grid or volume:
+            op = pie.operator('machin3.set_snapping_preset', text='Surface', depress=ts.snap_elements == {'FACE'} and ts.snap_target == 'MEDIAN' and ts.use_snap_align_rotation, icon='SNAP_FACE')
+            op.element = 'FACE'
+            op.target = 'MEDIAN'
+            op.align_rotation = True
+
+        else:
+            op = pie.operator('machin3.set_snapping_preset', text='Edge', depress=ts.snap_elements == {'EDGE'} and ts.snap_target == 'CLOSEST' and not ts.use_snap_align_rotation, icon='SNAP_EDGE')
+            op.element = 'EDGE'
+            op.target = 'CLOSEST'
+            op.align_rotation = False
 
         # 8 - TOP
 
@@ -2080,7 +2512,7 @@ class PieSnapping(Menu):
 
         b = box.box()
         column = b.column()
-        self.draw_left_column(ts, column)
+        self.draw_center_column(ts, column)
 
 
         # 7 - TOP - LEFT
@@ -2090,28 +2522,54 @@ class PieSnapping(Menu):
         pie.separator()
 
         # 1 - BOTTOM - LEFT
-        pie.separator()
+        if absolute_grid or volume:
+            op = pie.operator('machin3.set_snapping_preset', text='Edge', depress=ts.snap_elements == {'EDGE'} and ts.snap_target == 'CLOSEST' and not ts.use_snap_align_rotation, icon='SNAP_EDGE')
+            op.element = 'EDGE'
+            op.target = 'CLOSEST'
+            op.align_rotation = False
+
+        else:
+            pie.separator()
 
         # 3 - BOTTOM - RIGHT
-        pie.separator()
+        if absolute_grid and volume:
+            op = pie.operator('machin3.set_snapping_preset', text='Volume', depress=ts.snap_elements == {'VOLUME'}, icon='SNAP_VOLUME')
+            op.element = 'VOLUME'
+
+        else:
+            pie.separator()
 
 
-    def draw_left_column(self, tool_settings, layout):
+    def draw_center_column(self, tool_settings, layout):
         column = layout.column(align=True)
+
+        if tool_settings.snap_elements == {'INCREMENT'}:
+            column.scale_x = 1.5
 
         row = column.row(align=True)
         row.scale_y = 1.25
         row.popover(panel="VIEW3D_PT_snapping", text="More...")
+        row.prop(get_prefs(), 'snap_show_volume', text='', icon='SNAP_VOLUME')
+        row.prop(get_prefs(), 'snap_show_absolute_grid', text='', icon='SNAP_GRID')
 
-        row = column.row(align=True)
-        row.scale_y = 1.5
-        row.scale_x = 0.9
-        row.prop(tool_settings, 'snap_target', expand=True)
 
-        row = column.row(align=True)
-        row.scale_y = 1.25
-        row.prop(tool_settings, 'use_snap_align_rotation')
+        if tool_settings.snap_elements == {'INCREMENT'}:
+            row = column.row(align=True)
+            row.scale_y = 1.25
+            row.prop(tool_settings, 'use_snap_grid_absolute')
 
+        else:
+            row = column.row(align=True)
+            row.scale_y = 1.5
+            row.scale_x = 0.9
+            row.prop(tool_settings, 'snap_target', expand=True)
+
+            row = column.row(align=True)
+            row.scale_y = 1.25
+            row.prop(tool_settings, 'use_snap_align_rotation')
+
+
+# COLLECTIONS
 
 class PieCollections(Menu):
     bl_idname = "MACHIN3_MT_collections_pie"
@@ -2147,7 +2605,6 @@ class PieCollections(Menu):
             dcol = bpy.data.collections.get(decalsname)
 
 
-
         layout = self.layout
         pie = layout.menu_pie()
 
@@ -2160,7 +2617,7 @@ class PieCollections(Menu):
 
         # 6 - RIGHT
         if sel:
-            pie.operator("machin3.add_to_collection", text="Add to", icon="ADD")
+            pie.operator("object.link_to_collection", text="Add to", icon="ADD")
 
         else:
             pie.separator()
@@ -2168,7 +2625,7 @@ class PieCollections(Menu):
 
         # 2 - BOTTOM
         if sel:
-            pie.operator("machin3.move_to_collection", text="Move to")
+            pie.operator("object.move_to_collection", text="Move to", icon="ADD")
 
         else:
             pie.operator("machin3.create_collection", text="Create", icon="GROUP")
@@ -2455,6 +2912,8 @@ class PieCollections(Menu):
             row.label(text="Info")
 
 
+# WORKSPACE
+
 class PieWorkspace(Menu):
     bl_idname = "MACHIN3_MT_workspace_pie"
     bl_label = "Workspaces"
@@ -2463,32 +2922,22 @@ class PieWorkspace(Menu):
         layout = self.layout
         pie = layout.menu_pie()
 
-        # 4 - LEFT
-        pie.operator("machin3.switch_workspace", text="MACHIN3", icon='VIEW3D').name="General"
+        p = get_prefs()
 
-        # 6 - RIGHT
-        # pie.operator("machin3.switch_workspace", text="Compositing", icon='NODE_COMPOSITING').name="Compositing"
-        pie.separator()
+        # for piedir in ['left', 'top_left', 'top', 'top_right', 'right', 'bottom_right', 'bottom', 'bottom_left']:
+        for piedir in ['left', 'right', 'bottom', 'top', 'top_left', 'top_right', 'bottom_left', 'bottom_right']:
+            name = getattr(p, f'pie_workspace_{piedir}_name')
+            text = getattr(p, f'pie_workspace_{piedir}_text')
+            icon = getattr(p, f'pie_workspace_{piedir}_icon')
 
-        # 2 - BOTTOM
-        pie.operator("machin3.switch_workspace", text="Scripting", icon='CONSOLE').name="Scripting"
+            if name:
+                pie.operator("machin3.switch_workspace", text=text if text else name, icon=icon if icon else 'BLENDER').name=name
 
-        # 8 - TOP
-        pie.operator("machin3.switch_workspace", text="Material", icon='MATERIAL_DATA').name="Material"
+            else:
+                pie.separator()
 
-        # 7 - TOP - LEFT
-        pie.operator("machin3.switch_workspace", text="UVs", icon='GROUP_UVS').name="UVs"
 
-        # 9 - TOP - RIGHT
-        pie.operator("machin3.switch_workspace", text="World", icon='WORLD').name="World"
-
-        # 1 - BOTTOM - LEFT
-        pie.separator()
-
-        # 3 - BOTTOM - RIGHT
-        # pie.operator("machin3.switch_workspace", text="Video", icon='FILE_MOVIE').name="Video"
-        pie.separator()
-
+# TOOLS
 
 class PieTools(Menu):
     bl_idname = "MACHIN3_MT_tools_pie"

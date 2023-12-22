@@ -1,11 +1,13 @@
 import bpy
 from bpy.props import IntProperty, FloatProperty, BoolProperty
+from math import degrees, radians
 import bmesh
-from mathutils import Vector, Matrix
+from mathutils import Vector, Matrix, Quaternion
 from .. utils.selection import get_boundary_edges, get_edges_vert_sequences
 from .. utils.math import average_locations
 from .. utils.geometry import calculate_thread
-from .. utils.draw import draw_vector
+from .. utils.draw import draw_point, draw_vector
+from .. colors import green, red
 
 
 class Thread(bpy.types.Operator):
@@ -54,7 +56,11 @@ class Thread(bpy.types.Operator):
         r.prop(self, 'flip', toggle=True)
 
     def execute(self, context):
+        debug = True
+        debug = False
+
         active = context.active_object
+        mx = active.matrix_world
 
         bm = bmesh.from_edit_mesh(active.data)
         bm.normal_update()
@@ -98,13 +104,20 @@ class Thread(bpy.types.Operator):
                     center1 = average_locations([v.co for v in verts1])
                     center2 = average_locations([v.co for v in verts2])
 
+                    if debug:
+                        draw_point(center1, color=green, mx=mx, modal=False)
+                        draw_point(center2, color=red, mx=mx, modal=False)
+
                     # get the radii, and set the radius as an average
                     radius1 = (center1 - verts1[0].co).length
                     radius2 = (center2 - verts2[0].co).length
                     self.radius = (radius1 + radius2) / 2
 
+                    # get depth as a percantage in relation to the radius
+                    depth = self.depth / 100 * self.radius
+
                     # create point coordinates and face indices
-                    thread, bottom, top, height = calculate_thread(segments=self.segments, loops=self.loops, radius=self.radius, depth=self.depth / 100, h1=self.h1, h2=self.h2, h3=self.h3, h4=self.h4, fade=self.fade / 100)
+                    thread, bottom, top, height = calculate_thread(segments=self.segments, loops=self.loops, radius=self.radius, depth=depth, h1=self.h1, h2=self.h2, h3=self.h3, h4=self.h4, fade=self.fade / 100)
 
                     if height != 0:
 
@@ -121,7 +134,14 @@ class Thread(bpy.types.Operator):
                         # then rotate it into alignment too, this is done in two steps, first the up vectors are aligned
                         selup = (center2 - center1).normalized()
 
+                        if debug:
+                            draw_vector(selup, origin=center1, mx=mx, modal=False)
+
                         selrot = Vector((0, 0, 1)).rotation_difference(selup)
+
+                        if debug:
+                            print(selrot.axis, degrees(selrot.angle))
+
                         bmesh.ops.rotate(bm, cent=center1, matrix=selrot.to_matrix(), verts=verts, space=Matrix())
 
                         # then the first verts are aligned too, get the first vert from the active face if its part of the selection
@@ -135,10 +155,28 @@ class Thread(bpy.types.Operator):
                         else:
                             v1 = verts1[0]
 
-                        threadvec = verts[0].co - center1
-                        selvec = v1.co - center1
+                        threadvec = (verts[0].co - center1).normalized()
+                        selvec = (v1.co - center1).normalized()
 
-                        matchrot = threadvec.rotation_difference(selvec).normalized()
+                        if debug:
+                            draw_vector(threadvec, origin=center1, mx=mx, color=green, modal=False)
+                            draw_vector(selvec, origin=center1, mx=mx, color=red, modal=False)
+
+                        dot = threadvec.dot(selvec)
+
+                        # if the threadvec and the selvec are directly opposing each other, the rotation_difference methdo will produce an odd quat for some reason
+                        # see 261_wonky_thread.blend, so just build the quat manually then
+                        if round(dot, 6) == -1:
+                            print("WARNING: using manual 180 selup quat")
+                            matchrot = Quaternion(selup, radians(180))
+
+                        # otherwise create the rotation based on the rotation_difference
+                        else:
+                            matchrot = threadvec.rotation_difference(selvec)
+
+                        if debug:
+                            print(matchrot.axis, degrees(matchrot.angle))
+
                         bmesh.ops.rotate(bm, cent=center1, matrix=matchrot.to_matrix(), verts=verts, space=Matrix())
 
                         # remove doubles

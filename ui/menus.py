@@ -1,6 +1,10 @@
 import bpy
-from .. utils.registration import get_prefs
+from .. utils.registration import get_prefs, get_addon
 from .. utils.group import get_group_polls
+from .. utils.ui import get_icon
+
+
+hypercursor = None
 
 
 # MACHIN3tools SUB MENU
@@ -10,8 +14,16 @@ class MenuMACHIN3toolsObjectContextMenu(bpy.types.Menu):
     bl_label = "MACHIN3tools"
 
     def draw(self, context):
+        global hypercursor
+
+        if hypercursor is None:
+            hypercursor = get_addon('HyperCursor')[0]
+
         layout = self.layout
         p = get_prefs()
+
+        if p.activate_align:
+            layout.operator("machin3.align_relative", text="Align Relative")
 
         if p.activate_mirror:
             layout.operator("machin3.unmirror", text="Un-Mirror")
@@ -19,6 +31,7 @@ class MenuMACHIN3toolsObjectContextMenu(bpy.types.Menu):
         if p.activate_select:
             layout.operator("machin3.select_center_objects", text="Select Center Objects")
             layout.operator("machin3.select_wire_objects", text="Select Wire Objects")
+            layout.operator("machin3.select_hierarchy", text="Select Hierarchy")
 
         if p.activate_apply:
             layout.operator("machin3.apply_transformations", text="Apply Transformations")
@@ -84,6 +97,8 @@ class MenuGroupObjectContextMenu(bpy.types.Menu):
 
     def draw(self, context):
         layout = self.layout
+        layout.operator_context = "INVOKE_DEFAULT"
+
         m3 = context.scene.M3
 
         active_group, active_child, group_empties, groupable, ungroupable, addable, removable, selectable, duplicatable, groupifyable = get_group_polls(context)
@@ -154,7 +169,7 @@ def object_context_menu(self, context):
     m3 = context.scene.M3
     p = get_prefs()
 
-    if any([p.activate_mirror, p.activate_select, p.activate_apply, p.activate_mesh_cut, p.activate_material_picker]):
+    if any([p.activate_align, p.activate_mirror, p.activate_select, p.activate_apply, p.activate_mesh_cut, p.activate_material_picker]):
         layout.menu("MACHIN3_MT_machin3tools_object_context_menu")
         layout.separator()
 
@@ -271,25 +286,44 @@ def add_object_buttons(self, context):
     self.layout.operator("machin3.quadsphere", text="Quad Sphere", icon='SPHERE')
 
 
-# EXTRUDE - CURSOR SPIN
+# EXTRUDE
 
-def cursor_spin(self, context):
-    if getattr(bpy.types, 'MACHIN3_OT_cursor_spin', False):
-        self.layout.operator("machin3.cursor_spin", text="Cursor Spin")
+def extrude_menu(self, context):
+    is_cursor_spin = getattr(bpy.types, 'MACHIN3_OT_cursor_spin', False)
+    is_punch_it = getattr(bpy.types, 'MACHIN3_OT_punch_it_a_little', False)
+    is_punchit = getattr(bpy.types, 'MACHIN3_OT_punchit', False)
+
+    if any([is_cursor_spin, is_punch_it]):
+        self.layout.separator()
+
+        if is_cursor_spin:
+            self.layout.operator("machin3.cursor_spin", text="Cursor Spin")
+
+        if is_punch_it and not is_punchit:
+            self.layout.operator("machin3.punch_it_a_little", text="Punch It (a little)", icon_value=get_icon('fist'))
 
 
 # MATERIAL PICKER HEADER
 
 def material_pick_button(self, context):
-    workspaces = [ws.strip() for ws in get_prefs().matpick_workspace_names.split(',')]
+    p = get_prefs()
 
-    if any([s in context.workspace.name for s in workspaces]):
+    workspaces = [ws.strip() for ws in p.matpick_workspace_names.split(',')]
+    shading = context.space_data.shading
+
+    view_shading_types = []
+    if p.matpick_shading_type_material:
+        view_shading_types.append('MATERIAL')
+
+    if p.matpick_shading_type_render:
+        view_shading_types.append('RENDER')
+
+    if any([s in context.workspace.name for s in workspaces]) or shading.type in view_shading_types:
         if getattr(bpy.types, 'MACHIN3_OT_material_picker', False):
             row = self.layout.row()
             row.scale_x = 1.25
             row.scale_y = 1.1
-            # row.separator_spacer()
-            row.separator(factor=get_prefs().matpick_spacing_obj if context.mode == 'OBJECT' else get_prefs().matpick_spacing_edit)
+            row.separator(factor=p.matpick_spacing_obj if context.mode == 'OBJECT' else p.matpick_spacing_edit)
             row.operator("machin3.material_picker", text="", icon="EYEDROPPER")
 
 
@@ -303,3 +337,86 @@ def outliner_group_toggles(self, context):
             self.layout.prop(m3, "group_select", text='', icon='GROUP_VERTEX')
             self.layout.prop(m3, "group_recursive_select", text='', icon='CON_SIZELIKE')
             self.layout.prop(m3, "group_hide", text='', icon='HIDE_ON' if m3.group_hide else 'HIDE_OFF', emboss=False)
+
+
+# GROUP ORIGIN ADJUSTMENT
+
+def group_origin_adjustment_toggle(self, context):
+    if get_prefs().activate_group:
+        m3 = context.scene.M3
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        heading = 'Disable, when done!' if m3.affect_only_group_origin else ''
+        column = layout.column(heading=heading, align=True)
+
+        if (context.active_object and context.active_object.M3.is_group_empty) or m3.affect_only_group_origin:
+            column.prop(m3, "affect_only_group_origin", text="Group Origin")
+
+
+# RENDER
+
+def render_menu(self, context):
+    if getattr(bpy.types, 'MACHIN3_OT_render', False):
+        layout = self.layout
+
+        layout.separator()
+
+        op = layout.operator("machin3.render", text=f"Quick Render")
+        op.seed = False
+        op.final = False
+
+        op = layout.operator("machin3.render", text=f"Final Render")
+        op.seed = False
+        op.final = True
+
+        row = layout.row()
+        row.scale_y = 0.3
+        row.label(text='')
+
+        row = layout.row()
+        row.active = True if context.scene.camera else False
+        row.prop(get_prefs(), 'render_seed_count', text="Seed Count")
+
+        op = layout.operator("machin3.render", text=f"Seed Render")
+        op.seed = True
+        op.final = False
+
+        op = layout.operator("machin3.render", text=f"Final Seed Render")
+        op.seed = True
+        op.final = True
+
+
+def render_buttons(self, context):
+    if getattr(bpy.types, 'MACHIN3_OT_render', False) and get_prefs().render_show_buttons_in_light_properties and context.scene.camera:
+        layout = self.layout
+
+        column = layout.column(align=True)
+
+        row = column.row(align=True)
+        row.scale_y = 1.2
+        op = row.operator("machin3.render", text=f"Quick Render")
+        op.seed = False
+        op.final = False
+
+        op = row.operator("machin3.render", text=f"Final Render")
+        op.seed = False
+        op.final = True
+
+        column.separator()
+
+        row = column.row(align=True)
+        row.active = True if context.scene.camera else False
+        row.prop(get_prefs(), 'render_seed_count', text="Seed Render Count")
+
+        row = column.row(align=True)
+        row.scale_y = 1.2
+        op = row.operator("machin3.render", text=f"Seed Render")
+        op.seed = True
+        op.final = False
+
+        op = row.operator("machin3.render", text=f"Final Seed Render")
+        op.seed = True
+        op.final = True

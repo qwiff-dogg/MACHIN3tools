@@ -1,6 +1,7 @@
 import bpy
 from bpy.utils import register_class, unregister_class, previews
 import os
+from importlib import import_module
 from .. registration import keys as keysdict
 from .. registration import classes as classesdict
 from .. msgbus import group_name_change, group_color_change
@@ -44,6 +45,23 @@ def get_addon(addon, debug=False):
 
             return enabled, foldername, version, path
     return False, None, None, None
+
+
+def get_addon_operator_idnames(addon):
+    if addon in ['MACHIN3tools', 'DECALmachine', 'MESHmachine', 'CURVEmachine', 'HyperCursor', 'PUNCHit']:
+        if addon in ['DECALmachine', 'MESHmachine', 'CURVEmachine', 'HyperCursor', 'PUNCHit']:
+            if not get_addon(addon)[0]:
+                return []
+
+        classes = import_module(f'{addon}.registration').classes
+
+        idnames = []
+
+        for imps in classes.values():
+            op_imps = [imp for imp in imps if 'operators' in imp[0] or 'macros' in imp[0]]
+            idnames.extend([f"machin3.{idname}" for _, cls in op_imps for _, idname in cls])
+
+        return idnames
 
 
 def get_addon_prefs(addon):
@@ -129,6 +147,7 @@ def register_keymaps(keylists):
                         ctrl = item.get("ctrl", False)
                         alt = item.get("alt", False)
 
+
                         kmi = km.keymap_items.new(idname, type, value, shift=shift, ctrl=ctrl, alt=alt)
 
                         if kmi:
@@ -137,6 +156,9 @@ def register_keymaps(keylists):
                             if properties:
                                 for name, value in properties:
                                     setattr(kmi.properties, name, value)
+
+                            active = item.get("active", True)
+                            kmi.active = active
 
                             keymaps.append((km, kmi))
     else:
@@ -259,8 +281,9 @@ def activate(self, register, tool):
             if k not in startup_keymaps:
                 startup_keymaps.append(k)
 
-        if classes:
-            print("Registered MACHIN3tools' %s" % (name))
+        if get_prefs().registration_debug:
+            if classes:
+                print("Registered MACHIN3tools' %s" % (name))
 
         classlist.clear()
         keylist.clear()
@@ -305,8 +328,9 @@ def activate(self, register, tool):
 
         unregister_classes(classes, debug=debug)
 
-        if classes:
-            print("Unregistered MACHIN3tools' %s" % (name))
+        if get_prefs().registration_debug:
+            if classes:
+                print("Unregistered MACHIN3tools' %s" % (name))
 
 
 # GET CORE, TOOLS and PIES - CLASSES and KEYMAPS - for startup registration
@@ -369,6 +393,10 @@ def get_tools():
     classlists, keylists, count = get_surface_slide(classlists, keylists, count)
 
 
+    # ASSETBROWSER TOOLS
+    classlists, keylists, count = get_assetbrowser(classlists, keylists, count)
+
+
     # FILEBROWSER TOOLS
     classlists, keylists, count = get_filebrowser(classlists, keylists, count)
 
@@ -389,16 +417,24 @@ def get_tools():
     classlists, keylists, count = get_group(classlists, keylists, count)
 
 
+    # REGION
+    classlists, keylists, count = get_region(classlists, keylists, count)
+
+
     # THREADS
     classlists, keylists, count = get_thread(classlists, keylists, count)
 
 
-    # SPIN
-    classlists, keylists, count = get_spin(classlists, keylists, count)
+    # EXTRUDE
+    classlists, keylists, count = get_extrude(classlists, keylists, count)
 
 
     # SMOOTH
     classlists, keylists, count = get_smooth(classlists, keylists, count)
+
+    # RENDER
+    classlists, keylists, count = get_render(classlists, keylists, count)
+
 
 
     # CUSTOMIZE
@@ -558,7 +594,7 @@ def get_apply(classlists=[], keylists=[], count=0):
 def get_select(classlists=[], keylists=[], count=0):
     if get_prefs().activate_select:
         classlists.append(classesdict["SELECT"])
-        # keylists.append(keysdict["SELECT"])
+        keylists.append(keysdict["SELECT"])
         count +=1
 
     return classlists, keylists, count
@@ -577,6 +613,15 @@ def get_surface_slide(classlists=[], keylists=[], count=0):
     if get_prefs().activate_surface_slide:
         classlists.append(classesdict["SURFACE_SLIDE"])
         # keylists.append(keysdict["ALIGN"])
+        count +=1
+
+    return classlists, keylists, count
+
+
+def get_assetbrowser(classlists=[], keylists=[], count=0):
+    if get_prefs().activate_assetbrowser_tools:
+        classlists.append(classesdict["ASSETBROWSER"])
+        # keylists.append(keysdict["FILEBROWSER"])
         count +=1
 
     return classlists, keylists, count
@@ -624,6 +669,15 @@ def get_group(classlists=[], keylists=[], count=0):
     return classlists, keylists, count
 
 
+def get_region(classlists=[], keylists=[], count=0):
+    if get_prefs().activate_region: 
+        classlists.append(classesdict["REGION"])
+        keylists.append(keysdict["REGION"])
+        count +=1
+
+    return classlists, keylists, count
+
+
 def get_thread(classlists=[], keylists=[], count=0):
     if get_prefs().activate_thread:
         classlists.append(classesdict["THREAD"])
@@ -632,10 +686,10 @@ def get_thread(classlists=[], keylists=[], count=0):
     return classlists, keylists, count
 
 
-def get_spin(classlists=[], keylists=[], count=0):
-    if get_prefs().activate_spin:
-        classlists.append(classesdict["SPIN"])
-        count +=1
+def get_extrude(classlists=[], keylists=[], count=0):
+    if get_prefs().activate_extrude:
+        classlists.append(classesdict["EXTRUDE"])
+        count +=2
 
     return classlists, keylists, count
 
@@ -644,6 +698,15 @@ def get_smooth(classlists=[], keylists=[], count=0):
     if get_prefs().activate_smooth:
         classlists.append(classesdict["SMOOTH"])
         keylists.append(keysdict["SMOOTH"])
+        count +=1
+
+    return classlists, keylists, count
+
+
+def get_render(classlists=[], keylists=[], count=0):
+    if get_prefs().activate_render:
+        classlists.append(classesdict["RENDER"])
+        keylists.append(keysdict["RENDER"])
         count +=1
 
     return classlists, keylists, count

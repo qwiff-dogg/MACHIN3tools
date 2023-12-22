@@ -1,3 +1,4 @@
+import bpy
 from .. items import mirror_props
 
 
@@ -29,7 +30,35 @@ def add_mods_from_dict(obj, modsdict):
                 setattr(mod, pname, pvalue)
 
 
+def add_bevel(obj, method='WEIGHT'):
+    mod = obj.modifiers.new(name='Bevel', type='BEVEL')
+    mod.limit_method = method
+
+    mod.show_expanded = False
+    return mod
+
+
 # REMOVE
+
+def remove_mod(modname, objtype='MESH', context=None, object=None):
+    '''
+    remove modifier named modname
+    optionaly with context override on an object that isn't active
+    '''
+
+    if context and object:
+        with context.temp_override(object=object):
+            if objtype == 'GPENCIL':
+                bpy.ops.object.gpencil_modifier_remove(modifier=modname)
+            else:
+                bpy.ops.object.modifier_remove(modifier=modname)
+
+    else:
+        if objtype == 'GPENCIL':
+            bpy.ops.object.gpencil_modifier_remove(modifier=modname)
+        else:
+            bpy.ops.object.modifier_remove(modifier=modname)
+
 
 def remove_triangulate(obj):
     lastmod = obj.modifiers[-1] if obj.modifiers else None
@@ -75,3 +104,30 @@ def get_mods_as_dict(obj, types=[], skip_show_expanded=False):
         modsdict[mod.name] = get_mod_as_dict(mod, skip_show_expanded=skip_show_expanded)
 
     return modsdict
+
+
+# APPLY
+
+def apply_mod(modname):
+    bpy.ops.object.modifier_apply(modifier=modname)
+
+
+# MOD OBJECT
+
+def get_mod_obj(mod):
+    if mod.type in ['BOOLEAN', 'HOOK', 'LATTICE', 'DATA_TRANSFER', 'GP_MIRROR']:
+        return mod.object
+    elif mod.type == 'MIRROR':
+        return mod.mirror_object
+    elif mod.type == 'ARRAY':
+        return mod.offset_object
+
+
+# ORDER
+
+def move_mod(mod, index=0):
+    obj = mod.id_data
+    current_index = list(obj.modifiers).index(mod)
+
+    if current_index != index:
+        obj.modifiers.move(current_index, index)

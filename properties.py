@@ -6,15 +6,14 @@ from . utils.math import flatten_matrix
 from . utils.world import get_world_output
 from . utils.system import abspath
 from . utils.registration import get_prefs, get_addon_prefs
-from . utils.draw import remove_object_axes_drawing_handler, add_object_axes_drawing_handler
 from . utils.tools import get_active_tool
-from . items import eevee_preset_items, align_mode_items, render_engine_items, cycles_device_items, driver_limit_items, axis_items, driver_transform_items, driver_space_items, bc_orientation_items
+from . utils.light import adjust_lights_for_rendering, get_area_light_poll
+from . utils.view import sync_light_visibility
+from . utils.material import adjust_bevel_shader
+from . items import eevee_preset_items, align_mode_items, render_engine_items, cycles_device_items, driver_limit_items, axis_items, driver_transform_items, driver_space_items, bc_orientation_items, shading_light_items, compositor_items
 
 
 # COLLECTIONS
-
-class AppendMatsCollection(bpy.types.PropertyGroup):
-    name: StringProperty()
 
 
 class HistoryObjectsCollection(bpy.types.PropertyGroup):
@@ -39,6 +38,20 @@ selected = []
 
 
 class M3SceneProperties(bpy.types.PropertyGroup):
+
+    # FOCUS
+
+    focus_history: CollectionProperty(type=HistoryEpochCollection)
+
+
+    # SAVE Pie
+
+    use_undo_save: BoolProperty(name="Use Undo Save", description="Save before Undoing\nBe warned, depending on your scene complexity, this can noticably affect your undo speed", default=False)
+    use_redo_save: BoolProperty(name="Use Redo Save", description="Also save before first Operator Redos", default=False)
+
+
+    # MODES Pie
+
     def update_xray(self, context):
         x = (self.pass_through, self.show_edit_mesh_wire)
         shading = context.space_data.shading
@@ -102,6 +115,10 @@ class M3SceneProperties(bpy.types.PropertyGroup):
             else:
                 ts.uv_select_mode = "VERTEX"
 
+    pass_through: BoolProperty(name="Pass Through", default=False, update=update_xray)
+    show_edit_mesh_wire: BoolProperty(name="Show Edit Mesh Wireframe", default=False, update=update_xray)
+    uv_sync_select: BoolProperty(name="Synce Selection", default=False, update=update_uv_sync_select)
+
     def update_show_cavity(self, context):
         t = (self.show_cavity, self.show_curvature)
         shading = context.space_data.shading
@@ -117,29 +134,11 @@ class M3SceneProperties(bpy.types.PropertyGroup):
         elif t == (False, True):
             shading.cavity_type = "SCREEN"
 
-    def update_grouppro_dotnames(self, context):
-        gpcols = [col for col in bpy.data.collections if col.created_with_gp]
-
-        for col in gpcols:
-            # hide collections
-            if self.grouppro_dotnames:
-                if not col.name.startswith("."):
-                    col.name = ".%s" % col.name
-
-            else:
-                if col.name.startswith("."):
-                    col.name = col.name[1:]
-
-    pass_through: BoolProperty(name="Pass Through", default=False, update=update_xray)
-    show_edit_mesh_wire: BoolProperty(name="Show Edit Mesh Wireframe", default=False, update=update_xray)
-    uv_sync_select: BoolProperty(name="Synce Selection", default=False, update=update_uv_sync_select)
-
     show_cavity: BoolProperty(name="Cavity", default=True, update=update_show_cavity)
     show_curvature: BoolProperty(name="Curvature", default=False, update=update_show_cavity)
 
-    focus_history: CollectionProperty(type=HistoryEpochCollection)
 
-    grouppro_dotnames: BoolProperty(name=".dotname GroupPro collections", default=False, update=update_grouppro_dotnames)
+    # SHADING Pie
 
     def update_eevee_preset(self, context):
         eevee = context.scene.eevee
@@ -151,12 +150,18 @@ class M3SceneProperties(bpy.types.PropertyGroup):
             eevee.use_bloom = False
             eevee.use_volumetric_lights = False
 
-            shading.use_scene_lights = False
-            shading.use_scene_world = False
+            if self.eevee_preset_set_use_scene_lights:
+                shading.use_scene_lights = False
+
+            if self.eevee_preset_set_use_scene_world:
+                shading.use_scene_world = False
 
             if context.scene.render.engine == 'BLENDER_EEVEE':
-                shading.use_scene_lights_render = False
-                shading.use_scene_world_render = False
+                if self.eevee_preset_set_use_scene_lights:
+                    shading.use_scene_lights_render = False
+
+                if self.eevee_preset_set_use_scene_world:
+                    shading.use_scene_world_render = False
 
         elif self.eevee_preset == 'LOW':
             eevee.use_ssr = True
@@ -166,12 +171,18 @@ class M3SceneProperties(bpy.types.PropertyGroup):
             eevee.use_bloom = False
             eevee.use_volumetric_lights = False
 
-            shading.use_scene_lights = True
-            shading.use_scene_world = False
+            if self.eevee_preset_set_use_scene_lights:
+                shading.use_scene_lights = True
+
+            if self.eevee_preset_set_use_scene_world:
+                shading.use_scene_world = False
 
             if context.scene.render.engine == 'BLENDER_EEVEE':
-                shading.use_scene_lights_render = True
-                shading.use_scene_world_render = False
+                if self.eevee_preset_set_use_scene_lights:
+                    shading.use_scene_lights_render = True
+
+                if self.eevee_preset_set_use_scene_world:
+                    shading.use_scene_world_render = False
 
         elif self.eevee_preset == 'HIGH':
             eevee.use_ssr = True
@@ -181,12 +192,18 @@ class M3SceneProperties(bpy.types.PropertyGroup):
             eevee.use_bloom = True
             eevee.use_volumetric_lights = False
 
-            shading.use_scene_lights = True
-            shading.use_scene_world = False
+            if self.eevee_preset_set_use_scene_lights:
+                shading.use_scene_lights = True
+
+            if self.eevee_preset_set_use_scene_world:
+                shading.use_scene_world = False
 
             if context.scene.render.engine == 'BLENDER_EEVEE':
-                shading.use_scene_lights_render = True
-                shading.use_scene_world_render = False
+                if self.eevee_preset_set_use_scene_lights:
+                    shading.use_scene_lights_render = True
+
+                if self.eevee_preset_set_use_scene_world:
+                    shading.use_scene_world_render = False
 
         elif self.eevee_preset == 'ULTRA':
             eevee.use_ssr = True
@@ -196,29 +213,32 @@ class M3SceneProperties(bpy.types.PropertyGroup):
             eevee.use_bloom = True
             eevee.use_volumetric_lights = True
 
-            shading.use_scene_lights = True
+            if self.eevee_preset_set_use_scene_lights:
+                shading.use_scene_lights = True
 
             if context.scene.render.engine == 'BLENDER_EEVEE':
-                shading.use_scene_lights_render = True
+                if self.eevee_preset_set_use_scene_lights:
+                    shading.use_scene_lights_render = True
 
-            world = context.scene.world
-            if world:
-                shading.use_scene_world = True
+            if self.eevee_preset_set_use_scene_lights:
+                world = context.scene.world
+                if world:
+                    shading.use_scene_world = True
 
-                if context.scene.render.engine == 'BLENDER_EEVEE':
-                    shading.use_scene_world_render = True
+                    if context.scene.render.engine == 'BLENDER_EEVEE':
+                        shading.use_scene_world_render = True
 
-                output = get_world_output(world)
-                links = output.inputs[1].links
+                    output = get_world_output(world)
+                    links = output.inputs[1].links
 
-                if not links:
-                    tree = world.node_tree
+                    if not links:
+                        tree = world.node_tree
 
-                    volume = tree.nodes.new('ShaderNodeVolumePrincipled')
-                    tree.links.new(volume.outputs[0], output.inputs[1])
+                        volume = tree.nodes.new('ShaderNodeVolumePrincipled')
+                        tree.links.new(volume.outputs[0], output.inputs[1])
 
-                    volume.inputs[2].default_value = 0.1
-                    volume.location = (-200, 200)
+                        volume.inputs[2].default_value = 0.1
+                        volume.location = (-200, 200)
 
     def update_eevee_gtao_factor(self, context):
         context.scene.eevee.gtao_factor = self.eevee_gtao_factor
@@ -231,7 +251,48 @@ class M3SceneProperties(bpy.types.PropertyGroup):
             self.avoid_update = False
             return
 
+
+        # SWITCH RENDER ENGINE
+
         context.scene.render.engine = self.render_engine
+
+
+        # ADJUST AREA LIGHTS
+
+        if get_prefs().activate_render and get_prefs().activate_shading_pie and get_prefs().render_adjust_lights_on_render and get_area_light_poll() and self.adjust_lights_on_render:
+            last = self.adjust_lights_on_render_last
+
+            debug = False
+            # debug = True
+
+            if last in ['NONE', 'INCREASE'] and self.render_engine == 'CYCLES':
+                self.adjust_lights_on_render_last = 'DECREASE'
+
+                if debug:
+                    print("decreasing on switch to cycies engine")
+
+                adjust_lights_for_rendering(mode='DECREASE')
+
+            elif last == 'DECREASE' and self.render_engine == 'BLENDER_EEVEE':
+                self.adjust_lights_on_render_last = 'INCREASE'
+
+                if debug:
+                    print("increasing on switch to eevee engine")
+
+                adjust_lights_for_rendering(mode='INCREASE')
+
+
+        # SYNC LIGHT VISIBILITY
+
+        if get_prefs().activate_render and get_prefs().render_sync_light_visibility:
+            sync_light_visibility(context.scene)
+
+
+        # ADJUST BEVEL SHADER
+
+        if get_prefs().activate_render and get_prefs().activate_shading_pie and get_prefs().render_use_bevel_shader and self.use_bevel_shader:
+            if context.scene.render.engine == 'CYCLES':
+                adjust_bevel_shader(context)
 
     def update_cycles_device(self, context):
         if self.avoid_update:
@@ -239,6 +300,36 @@ class M3SceneProperties(bpy.types.PropertyGroup):
             return
 
         context.scene.cycles.device = self.cycles_device
+
+    def update_use_compositor(self, context):
+        if self.avoid_update:
+            self.avoid_update = False
+            return
+
+        # print("update compositing to", self.use_compositor)
+        context.space_data.shading.use_compositor = self.use_compositor
+
+    def update_shading_light(self, context):
+        if self.avoid_update:
+            self.avoid_update = False
+            return
+
+        shading = context.space_data.shading
+        shading.light = self.shading_light
+
+        # use shadows for FLAT shading
+        if self.use_flat_shadows:
+            shading.show_shadows = shading.light == 'FLAT'
+
+    def update_use_flat_shadows(self, context):
+        if self.avoid_update:
+            self.avoid_update = False
+            return
+
+        shading = context.space_data.shading
+
+        if shading.light == 'FLAT':
+            shading.show_shadows = self.use_flat_shadows
 
     def update_custom_views_local(self, context):
         if self.avoid_update:
@@ -260,19 +351,6 @@ class M3SceneProperties(bpy.types.PropertyGroup):
         # set transform preset
         if get_prefs().activate_transform_pie and get_prefs().custom_views_set_transform_preset:
             bpy.ops.machin3.set_transform_preset(pivot='MEDIAN_POINT', orientation='LOCAL' if self.custom_views_local else 'GLOBAL')
-
-        # toggle axes drawing
-        if get_prefs().activate_shading_pie and get_prefs().custom_views_toggle_axes_drawing:
-            dns = bpy.app.driver_namespace
-            handler = dns.get('draw_object_axes')
-
-            if handler:
-                remove_object_axes_drawing_handler(handler)
-
-            if self.custom_views_local and context.active_object:
-                add_object_axes_drawing_handler(dns, context, [context.active_object], False)
-
-            context.area.tag_redraw()
 
     def update_custom_views_cursor(self, context):
         if self.avoid_update:
@@ -298,40 +376,64 @@ class M3SceneProperties(bpy.types.PropertyGroup):
             if get_prefs().activate_transform_pie and get_prefs().custom_views_set_transform_preset:
                 bpy.ops.machin3.set_transform_preset(pivot='CURSOR' if self.custom_views_cursor else 'MEDIAN_POINT', orientation='CURSOR' if self.custom_views_cursor else 'GLOBAL')
 
-            # toggle axes drawing
-            if get_prefs().activate_shading_pie and get_prefs().custom_views_toggle_axes_drawing:
-                dns = bpy.app.driver_namespace
-                handler = dns.get('draw_object_axes')
+    def update_enforce_hide_render(self, context):
+        from . ui.operators import shading
 
-                if handler:
-                    remove_object_axes_drawing_handler(handler)
+        for _, name in shading.render_visibility:
+            obj = bpy.data.objects.get(name)
 
-                if self.custom_views_cursor:
-                    add_object_axes_drawing_handler(dns, context, [], True)
+            if obj:
+                obj.hide_set(obj.visible_get())
 
-                context.area.tag_redraw()
-
-
-    # SHADING
+    def update_use_bevel_shader(self, context):
+        adjust_bevel_shader(context)
+                
+    def update_bevel_shader(self, context):
+        if self.use_bevel_shader:
+            adjust_bevel_shader(context)
 
     eevee_preset: EnumProperty(name="Eevee Preset", description="Eevee Quality Presets", items=eevee_preset_items, default='NONE', update=update_eevee_preset)
+    eevee_preset_set_use_scene_lights: BoolProperty(name="Set Use Scene Lights", description="Set Use Scene Lights when changing Eevee Preset", default=False)
+    eevee_preset_set_use_scene_world: BoolProperty(name="Set Use Scene World", description="Set Use Scene World when changing Eevee Preset", default=False)
+
     eevee_gtao_factor: FloatProperty(name="Factor", default=1, min=0, step=0.1, update=update_eevee_gtao_factor)
     eevee_bloom_intensity: FloatProperty(name="Intensity", default=0.05, min=0, step=0.1, update=update_eevee_bloom_intensity)
 
     render_engine: EnumProperty(name="Render Engine", description="Render Engine", items=render_engine_items, default='BLENDER_EEVEE', update=update_render_engine)
     cycles_device: EnumProperty(name="Render Device", description="Render Device", items=cycles_device_items, default='CPU', update=update_cycles_device)
 
-    object_axes_size: FloatProperty(name="Object Axes Size", default=0.3, min=0)
-    object_axes_alpha: FloatProperty(name="Object Axes Alpha", default=0.75, min=0, max=1)
+    use_compositor: EnumProperty(name="Use Viewport Compositing", description="Use Viewport Compositing", items=compositor_items, default='DISABLED', update=update_use_compositor)
+
+    shading_light: EnumProperty(name="Lighting Method", description="Lighting Method for Solid/Texture Viewport Shading", items=shading_light_items, default='MATCAP', update=update_shading_light)
+    use_flat_shadows: BoolProperty(name="Use Flat Shadows", description="Use Shadows when in Flat Lighting", default=True, update=update_use_flat_shadows)
+
+    draw_axes_size: FloatProperty(name="Draw_Axes Size", default=0.1, min=0)
+    draw_axes_alpha: FloatProperty(name="Draw Axes Alpha", default=0.5, min=0, max=1)
+    draw_axes_screenspace: BoolProperty(name="Draw Axes in Screen Space", default=True)
+
+    draw_active_axes: BoolProperty(name="Draw Active Axes", description="Draw Active's Object Axes", default=False)
+    draw_cursor_axes: BoolProperty(name="Draw Cursor Axes", description="Draw Cursor's Axes", default=False)
+
+    adjust_lights_on_render: BoolProperty(name="Adjust Lights when Rendering", description="Adjust Lights Area Lights when Rendering, to better match Eevee and Cycles", default=False)
+    adjust_lights_on_render_divider: FloatProperty(name="Divider used to calculate Cycles Light Strength from Eeeve Light Strength", default=4, min=1)
+    adjust_lights_on_render_last: StringProperty(name="Last Light Adjustment", default='NONE')
+    is_light_decreased_by_handler: BoolProperty(name="Have Lights been decreased by the init render handler?", default=False)
+
+    enforce_hide_render: BoolProperty(name="Enforce hide_render setting when Viewport Rendering", description="Enfore hide_render setting for objects when Viewport Rendering", default=True, update=update_enforce_hide_render)
+
+    use_bevel_shader: BoolProperty(name="Use Bevel Shader", description="Batch Apply Bevel Shader to visible Materials", default=False, update=update_use_bevel_shader)
+    bevel_shader_use_dimensions: BoolProperty(name="Consider Object Dimensions for Bevel Radius Modulation", description="Consider Object Dimensions for Bevel Radius Modulation", default=True, update=update_bevel_shader)
+    bevel_shader_samples: IntProperty(name="Samples", description="Bevel Shader Samples", default=16, min=2, max=32, update=update_bevel_shader)
+    bevel_shader_radius: FloatProperty(name="Radius", description="Bevel Shader Global Radius", default=0.015, min=0, precision=3, step=0.01, update=update_bevel_shader)
 
 
-    # VIEW
+    # VIEWS Pie
 
     custom_views_local: BoolProperty(name="Custom Local Views", description="Use Custom Views, based on the active object's orientation", default=False, update=update_custom_views_local)
     custom_views_cursor: BoolProperty(name="Custom Cursor Views", description="Use Custom Views, based on the cursor's orientation", default=False, update=update_custom_views_cursor)
 
 
-    # ALIGN
+    # ALIGN Pie
 
     align_mode: EnumProperty(name="Align Mode", items=align_mode_items, default="VIEW")
 
@@ -462,6 +564,16 @@ class M3SceneProperties(bpy.types.PropertyGroup):
     affect_only_group_origin: BoolProperty(name="Transform only the Group Origin(Empty)", description='Transform the Group Origin(Empty) only, disable Group Auto-Select and enable "affect Parents only"', default=False, update=update_affect_only_group_origin)
 
 
+    # ASSETBROWSER
+
+    show_assetbrowser_tools: BoolProperty(name="Show Assetbrowser Tools")
+    asset_collect_path: StringProperty(name="Collect Path", subtype="DIR_PATH", default="")
+
+    # EXTRUDE
+
+    show_extrude: BoolProperty(name="Show Extrude")
+
+
     # hidden
 
     avoid_update: BoolProperty()
@@ -474,12 +586,25 @@ class M3ObjectProperties(bpy.types.PropertyGroup):
     pre_unity_export_mesh: PointerProperty(name="Pre-Unity-Export Mesh", type=bpy.types.Mesh)
     pre_unity_export_armature: PointerProperty(name="Pre-Unity-Export Armature", type=bpy.types.Armature)
 
-    is_group_empty: BoolProperty()
-    is_group_object: BoolProperty()
-    group_size: FloatProperty(default=0.2)
+    is_group_empty: BoolProperty(name="is group empty", default=False)
+    is_group_object: BoolProperty(name="is group object", default=False)
+    group_size: FloatProperty(name="group empty size", default=0.2, min=0)
+
+    # toggle smooth tool
 
     smooth_angle: FloatProperty(name="Smooth Angle", default=30)
     has_smoothed: BoolProperty(name="Has been smoothed", default=False)
+
+    # draw obj axes
+
+    draw_axes: BoolProperty(name="Draw Axes", default=False)
+
+
+    # bevel shader
+
+    bevel_shader_radius_mod: FloatProperty(name="Active Object Bevel Radius Modulation", description="Factor to modulate the Bevel Shader Radius on the Active Object", default=1, min=0, precision=2, step=0.1)
+    bevel_shader_dimensions_mod: FloatProperty(name="Active Object Bevel Radius Modulation", description="Factor to modulate the Bevel Shader Radius on the Active Object", default=1, min=0, precision=2, step=0.1)
+
 
     # hidden
 

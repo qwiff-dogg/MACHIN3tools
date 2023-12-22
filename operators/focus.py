@@ -6,9 +6,6 @@ from .. utils.view import update_local_view
 from .. items import focus_method_items, focus_levels_items
 
 
-# TODO: add HUD for local view levels
-
-
 class Focus(bpy.types.Operator):
     bl_idname = "machin3.focus"
     bl_label = "MACHIN3: Focus"
@@ -69,7 +66,7 @@ class Focus(bpy.types.Operator):
                 return
 
             if self.ignore_mirrors:
-                mirrors = [mod for obj in sel for mod in obj.modifiers if mod.type == 'MIRROR' and mod.show_viewport]
+                mirrors = [mod for obj in sel for mod in obj.modifiers if mod.type == 'MIRROR' and mod.show_viewport and mod.mirror_object]
 
                 for mod in mirrors:
                     mod.show_viewport = False
@@ -103,14 +100,33 @@ class Focus(bpy.types.Operator):
                 bm.select_flush(False)
 
     def local_view(self, context, debug=False):
-        def focus(context, view, sel, history, init=False, invert=False):
+        def focus(context, view, sel, history, init=False, invert=False, lights=[]):
             vis = context.visible_objects
             hidden = [obj for obj in vis if obj not in sel]
+
+            # remove lights from hidden objects, if lights are passed in, they shouldn#t be hidden
+            for obj in lights:
+                if obj in hidden:
+                    hidden.remove(obj)
+
+            # print("\nhidden")
+            # for obj in hidden:
+                # print("", obj.name)
 
             if hidden:
                 # initialize
                 if init:
+
+                    # when focus is initiated, the only way to not hide the lights, is by temporarily making them part of the selection
+                    if lights:
+                        for obj in lights:
+                            obj.select_set(True)
+
                     bpy.ops.view3d.localview(frame_selected=False)
+
+                    if lights:
+                        for obj in lights:
+                            obj.select_set(False)
 
                 # hide
                 else:
@@ -128,7 +144,7 @@ class Focus(bpy.types.Operator):
 
                 # disable mirror mods and store these unmirrored objects
                 if self.unmirror:
-                    mirrored = [(obj, mod) for obj in sel for mod in obj.modifiers if mod.type == "MIRROR"]
+                    mirrored = [(obj, mod) for obj in sel for mod in obj.modifiers if mod.type == "MIRROR" and mod.show_viewport and mod.mirror_object]
 
                     for obj, mod in mirrored:
                         if mod.show_viewport:
@@ -145,7 +161,6 @@ class Focus(bpy.types.Operator):
                 # generic selection event to force a HUD drawing/handler update
                 else:
                     sel[0].select_set(True)
-
 
         def unfocus(context, view, history):
             last_epoch = history[-1]
@@ -187,6 +202,12 @@ class Focus(bpy.types.Operator):
 
             sel = context.selected_objects
 
+        # get lights, not in the selection
+        lights = [obj for obj in vis if obj.type == 'LIGHT' and obj not in sel] if get_prefs().focus_lights else []
+
+        # print("\nlights")
+        # for obj in lights:
+            # print("", obj.name)
 
         # blender native local view
         if self.levels == "SINGLE":
@@ -204,7 +225,16 @@ class Focus(bpy.types.Operator):
             # if not view.local_view:
                 # self.show_tool_props = True
 
+            # when focus is initiated, the only way to not hide the lights, is by temporarily making them part of the selection
+            if lights:
+                for obj in lights:
+                    obj.select_set(True)
+
             bpy.ops.view3d.localview(frame_selected=False)
+
+            if lights:
+                for obj in lights:
+                    obj.select_set(False)
 
 
         # multi level local view
@@ -216,7 +246,7 @@ class Focus(bpy.types.Operator):
 
                 # go deeper
                 if context.selected_objects and not vis == sel:
-                    focus(context, view, sel, history, invert=self.invert)
+                    focus(context, view, sel, history, invert=self.invert, lights=lights)
 
                 # go higher
                 else:
@@ -235,7 +265,7 @@ class Focus(bpy.types.Operator):
                     history.clear()
 
                 # self.show_tool_props = True
-                focus(context, view, sel, history, init=True, invert=self.invert)
+                focus(context, view, sel, history, init=True, invert=self.invert, lights=lights)
 
             if debug:
                 for epoch in history:

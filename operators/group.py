@@ -22,7 +22,22 @@ class Group(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.mode == 'OBJECT'
+        '''
+        this poll ensures the operator isn't called when a single object is selected whos parent has at least one boolean mod using the object
+        even without this poll, no group would be created here, due to the object being parented, but this poll prevents any keymap overlap too
+        '''
+
+        if context.mode == 'OBJECT':
+            sel = [obj for obj in context.selected_objects]
+            if len(sel) == 1:
+                obj = sel[0]
+                parent = obj.parent
+
+                if parent:
+                    booleans = [mod for mod in parent.modifiers if mod.type == 'BOOLEAN' and mod.object == obj]
+                    if booleans:
+                        return False
+            return True
 
     def draw(self, context):
         layout = self.layout
@@ -157,7 +172,7 @@ class Group(bpy.types.Operator):
             fade_group_sizes(context, init=True)
 
         # draw label
-        bpy.ops.machin3.draw_label(text=f"{'Sub' if new_parent else 'Root'}: {empty.name}", coords=self.coords, color=(0.5, 1, 0.5) if new_parent else (1, 1, 1), alpha=0.75)
+        bpy.ops.machin3.draw_label(text=f"{'Sub' if new_parent else 'Root'}: {empty.name}", coords=self.coords, color=(0.5, 1, 0.5) if new_parent else (1, 1, 1), time=get_prefs().HUD_fade_group, alpha=0.75)
 
 
 class UnGroup(bpy.types.Operator):
@@ -308,7 +323,6 @@ class Select(bpy.types.Operator):
             return [obj for obj in context.selected_objects if obj.M3.is_group_empty or obj.M3.is_group_object]
 
     def invoke(self, context, event):
-
         # cleanup all groups initially
         clean_up_groups(context)
 
@@ -319,11 +333,15 @@ class Select(bpy.types.Operator):
             if obj.parent and obj.parent.M3.is_group_empty:
                 empties.add(obj.parent)
 
-        for e in empties:
-            e.select_set(True)
+        # NOTE: only make the select and make empties active, if they are actually visible, it may not be visible when you are in local view with just some of the group objects
+        # ####: if you would then make the empty active, you wouldn't be able to unsellect all until a new object is manually made active, because the group handler would keep the group selection alive
 
-            if len(empties) == 1:
-                context.view_layer.objects.active = e
+        for e in empties:
+            if e.visible_get():
+                e.select_set(True)
+
+                if len(empties) == 1:
+                    context.view_layer.objects.active = e
 
             select_group_children(context.view_layer, e, recursive=event.ctrl or context.scene.M3.group_recursive_select)
 
@@ -628,7 +646,8 @@ class ToggleChildren(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.area.type == 'OUTLINER'
+        if context.area:
+            return context.area.type == 'OUTLINER'
 
     def execute(self, context):
         area = context.area
@@ -647,7 +666,8 @@ class ToggleGroupMode(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.area.type == 'OUTLINER'
+        if context.area:
+            return context.area.type == 'OUTLINER'
 
     def execute(self, context):
         area = context.area
@@ -683,7 +703,8 @@ class CollapseOutliner(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.area.type == 'OUTLINER'
+        if context.area:
+            return context.area.type == 'OUTLINER'
 
     def execute(self, context):
 

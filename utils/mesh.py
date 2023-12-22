@@ -4,23 +4,72 @@ from mathutils import Vector, Matrix
 import numpy as np
 
 
+def get_bbox(mesh=None, coords=None):
+    '''
+    create mesh bounding box, not the evaluated mesh bbox like Blender's obj.bound_box does
+    '''
+
+    vert_count = len(mesh.vertices)
+    coords = np.empty((vert_count, 3), float)
+    mesh.vertices.foreach_get('co', np.reshape(coords, vert_count * 3))
+
+    # find extreme values on each axis in both directions
+    xmin = np.min(coords[:, 0])
+    xmax = np.max(coords[:, 0])
+    ymin = np.min(coords[:, 1])
+    ymax = np.max(coords[:, 1])
+    zmin = np.min(coords[:, 2])
+    zmax = np.max(coords[:, 2])
+
+    # create bbox corners based on axis min and max values
+    bbox = [Vector((xmin, ymin, zmin)),
+            Vector((xmax, ymin, zmin)),
+            Vector((xmax, ymax, zmin)),
+            Vector((xmin, ymax, zmin)),
+            Vector((xmin, ymin, zmax)),
+            Vector((xmax, ymin, zmax)),
+            Vector((xmax, ymax, zmax)),
+            Vector((xmin, ymax, zmax))]
+
+    # create bbox centers
+    xcenter = (xmin + xmax) / 2
+    ycenter = (ymin + ymax) / 2
+    zcenter = (zmin + zmax) / 2
+
+    centers = [Vector((xmin, ycenter, zcenter)),
+               Vector((xmax, ycenter, zcenter)),
+               Vector((xcenter, ymin, zcenter)),
+               Vector((xcenter, ymax, zcenter)),
+               Vector((xcenter, ycenter, zmin)),
+               Vector((xcenter, ycenter, zmax))]
+
+    # create dimensions vector
+    xdim = (bbox[1] - bbox[0]).length
+    ydim = (bbox[2] - bbox[1]).length
+    zdim = (bbox[4] - bbox[0]).length
+
+    dimensions = Vector((xdim, ydim, zdim))
+
+    return bbox, centers, dimensions
+
+
 def get_coords(mesh, mx=None, offset=0, indices=False):
     verts = mesh.vertices
     vert_count = len(verts)
 
-    coords = np.empty((vert_count, 3), np.float)
+    coords = np.empty((vert_count, 3), float)
     mesh.vertices.foreach_get('co', np.reshape(coords, vert_count * 3))
 
     # offset along vertex normal
     if offset:
-        normals = np.empty((vert_count, 3), np.float)
+        normals = np.empty((vert_count, 3), float)
         mesh.vertices.foreach_get('normal', np.reshape(normals, vert_count * 3))
 
         coords = coords + normals * offset
 
     # bring coords into non-local space
     if mx:
-        coords_4d = np.ones((vert_count, 4), dtype=np.float)
+        coords_4d = np.ones((vert_count, 4), dtype=float)
         coords_4d[:, :-1] = coords
 
         coords = np.einsum('ij,aj->ai', mx, coords_4d)[:, :-1]
@@ -107,6 +156,7 @@ def deselect(mesh):
 
     mesh.update()
 
+
 # BMESH
 
 def blast(mesh, prop, type):
@@ -154,14 +204,17 @@ def flip_normals(mesh):
 
 
 def join(target, objects, select=[]):
-    mxi = target.matrix_world.inverted()
+    mxi = target.matrix_world.inverted_safe()
 
     bm = bmesh.new()
     bm.from_mesh(target.data)
     bm.normal_update()
     bm.verts.ensure_lookup_table()
 
-    i = bm.faces.layers.int.verify()
+    select_layer = bm.faces.layers.int.get('Machin3FaceSelect')
+
+    if not select_layer:
+        select_layer = bm.faces.layers.int.new('Machin3FaceSelect')
 
     if any([obj.data.use_auto_smooth for obj in objects]):
         target.data.use_auto_smooth = True
@@ -176,13 +229,16 @@ def join(target, objects, select=[]):
         bmm.normal_update()
         bmm.verts.ensure_lookup_table()
 
-        im = bmm.faces.layers.int.verify()
+        obj_select_layer = bmm.faces.layers.int.get('Machin3FaceSelect')
+
+        if not obj_select_layer:
+            obj_select_layer = bmm.faces.layers.int.new('Machin3FaceSelect')
 
         for f in bmm.faces:
-            f[im] = idx + 1
+            f[obj_select_layer] = idx + 1
 
         bmm.to_mesh(mesh)
-        bmm.clear()
+        bmm.free()
 
         bm.from_mesh(mesh)
 
@@ -190,8 +246,8 @@ def join(target, objects, select=[]):
 
     if select:
         for f in bm.faces:
-            if f[i] in select:
+            if f[select_layer] in select:
                 f.select_set(True)
 
     bm.to_mesh(target.data)
-    bm.clear()
+    bm.free()

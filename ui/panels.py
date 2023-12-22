@@ -1,6 +1,7 @@
 import bpy
 from .. utils.registration import get_prefs
 from .. utils.group import get_group_polls
+from .. utils.ui import get_icon
 from .. import bl_info
 
 
@@ -14,36 +15,62 @@ class PanelMACHIN3tools(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        return get_prefs().activate_smart_drive or get_prefs().activate_unity or get_prefs().activate_group
+        p = get_prefs()
+
+        if p.show_sidebar_panel:
+            if context.mode == 'OBJECT':
+                return p.activate_smart_drive or p.activate_unity or p.activate_group or p.activate_assetbrowser_tools
+            elif context.mode == 'EDIT_MESH':
+                return p.activate_extrude
 
     def draw(self, context):
         layout = self.layout
 
         m3 = context.scene.M3
+        p = get_prefs()
 
-        if get_prefs().activate_smart_drive:
-            box = layout.box()
-            box.prop(m3, "show_smart_drive", text="Smart Drive", icon='TRIA_DOWN' if m3.show_smart_drive else 'TRIA_RIGHT', emboss=False)
+        if context.mode == 'OBJECT':
 
-            if m3.show_smart_drive:
-                self.draw_smart_drive(m3, box)
+            if p.activate_smart_drive:
+                box = layout.box()
+                box.prop(m3, "show_smart_drive", text="Smart Drive", icon='TRIA_DOWN' if m3.show_smart_drive else 'TRIA_RIGHT', emboss=False)
 
-        if get_prefs().activate_unity:
-            box = layout.box()
+                if m3.show_smart_drive:
+                    self.draw_smart_drive(m3, box)
 
-            box.prop(m3, "show_unity", text="Unity", icon='TRIA_DOWN' if m3.show_unity else 'TRIA_RIGHT', emboss=False)
+            if p.activate_unity:
+                box = layout.box()
 
-            if m3.show_unity:
-                self.draw_unity(context, m3, box)
+                box.prop(m3, "show_unity", text="Unity", icon='TRIA_DOWN' if m3.show_unity else 'TRIA_RIGHT', emboss=False)
 
+                if m3.show_unity:
+                    self.draw_unity(context, m3, box)
 
-        if get_prefs().activate_group:
-            box = layout.box()
+            if p.activate_group:
+                box = layout.box()
 
-            box.prop(m3, "show_group", text="Group", icon='TRIA_DOWN' if m3.show_group else 'TRIA_RIGHT', emboss=False)
+                box.prop(m3, "show_group", text="Group", icon='TRIA_DOWN' if m3.show_group else 'TRIA_RIGHT', emboss=False)
 
-            if m3.show_group:
-                self.draw_group(context, m3, box)
+                if m3.show_group:
+                    self.draw_group(context, m3, box)
+
+            if p.activate_assetbrowser_tools:
+                box = layout.box()
+
+                box.prop(m3, "show_assetbrowser_tools", text="Assetbrowser Tools", icon='TRIA_DOWN' if m3.show_assetbrowser_tools else 'TRIA_RIGHT', emboss=False)
+
+                if m3.show_assetbrowser_tools:
+                    self.draw_assetbrowser_tools(context, box)
+
+        elif context.mode == 'EDIT_MESH':
+
+            if p.activate_extrude:
+                box = layout.box()
+
+                box.prop(m3, "show_extrude", text="Extrude", icon='TRIA_DOWN' if m3.show_extrude else 'TRIA_RIGHT', emboss=False)
+
+                if m3.show_extrude:
+                    self.draw_extrude(context, m3, box)
 
     def draw_smart_drive(self, m3, layout):
         column = layout.column()
@@ -170,6 +197,28 @@ class PanelMACHIN3tools(bpy.types.Panel):
         active_group, active_child, group_empties, groupable, ungroupable, addable, removable, selectable, duplicatable, groupifyable = get_group_polls(context)
 
 
+        # GROUP ORIGIN ADJUSTMENT
+
+        row = column.row()
+        row = column.split(factor=0.3, align=True)
+        row.active = active_group or m3.affect_only_group_origin
+        row.label(text="Group Origin")
+
+        if active_group or m3.affect_only_group_origin:
+
+            if m3.affect_only_group_origin:
+                row.prop(m3, "affect_only_group_origin", text="Disable, when done!", toggle=True, icon_value=get_icon('error'))
+            else:
+                row.prop(m3, "affect_only_group_origin", text="Adjust", toggle=True, icon='OBJECT_ORIGIN')
+
+        else:
+            r = row.split(factor=0.4)
+            r.separator()
+            r.label(text="None")
+
+        column.separator()
+
+
         # SCENE PROPS
 
         row = column.split(factor=0.3, align=True)
@@ -240,3 +289,22 @@ class PanelMACHIN3tools(bpy.types.Panel):
         r = row.row(align=True)
         r.active = removable
         r.operator("machin3.remove_from_group", text="Remove from Group")
+
+    def draw_extrude(self, context, m3, layout):
+        column = layout.column(align=True)
+
+        row = column.row(align=True)
+        row.scale_y = 1.2
+        row.operator("machin3.cursor_spin", text='Cursor Spin')
+        row.operator("machin3.punch_it_a_little", text='Punch It (a little)', icon_value=get_icon('fist'))
+
+    def draw_assetbrowser_tools(self, context, layout):
+        column = layout.column(align=True)
+        column.scale_y = 1.2
+
+        column.operator("machin3.create_assembly_asset", text='Create Assembly Asset', icon='ASSET_MANAGER')
+        column.operator("machin3.assemble_instance_collection", text='Assemble Instance Collection', icon='NETWORK_DRIVE')
+
+        # column.separator()
+        # column.prop(context.scene.M3, "asset_collect_path", text='Folder')
+        # column.operator("machin3.collect_assets", text='Collect Assets', icon='FILE_REFRESH')
